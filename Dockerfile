@@ -30,6 +30,7 @@ RUN apt-get update && \
         tar \
         nano \
         ssh \
+        openssh-server\
         python3-pip \
         python3-dev \
         python3-matplotlib \
@@ -66,7 +67,7 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         libgoogle-glog-dev \
         libgflags-dev \
-        libatlas-base-dev \
+        libopenblas-dev \
         libsuitesparse-dev \
         libceres-dev \
     && rm -rf /var/lib/apt/lists/*
@@ -132,4 +133,4 @@ RUN ( \
   && mkdir /run/sshd
 RUN useradd -m user && yes password | passwd user && usermod -s /bin/bash user
 
-CMD ["bash", "-c", "tmux new-session -A -s main"]
+CMD ["bash", "-c", "/usr/sbin/sshd && tmux new-session -A -s main"]
