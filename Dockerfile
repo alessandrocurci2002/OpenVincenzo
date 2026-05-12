@@ -4,6 +4,8 @@
 #                + Gazebo Harmonic
 #                + Micro-XRCE-DDS-Agent v2.4.3
 #                + PX4-Autopilot v1.16.2 SITL
+#                + Ceres Solver
+#                + CLion remote debug (SSH)
 # ============================================================
 FROM osrf/ros:humble-desktop-full
 
@@ -20,7 +22,21 @@ RUN apt-get update && \
         lsb-release \
         cmake \
         build-essential \
+        gcc \
+        g++ \
+        gdb \
+        clang \
+        rsync \
+        tar \
+        nano \
+        ssh \
         python3-pip \
+        python3-dev \
+        python3-matplotlib \
+        python3-numpy \
+        python3-psutil \
+        python3-tk \
+        libeigen3-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # ── GStreamer ─────────────────────────────────────────────────
@@ -44,6 +60,16 @@ https://packages.osrfoundation.org/gazebo/ubuntu-stable $(lsb_release -cs) main"
     apt-get update && \
     apt-get install -y gz-harmonic ros-humble-ros-gzharmonic && \
     rm -rf /var/lib/apt/lists/*
+
+# ── Ceres Solver ─────────────────────────────────────────────
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        libgoogle-glog-dev \
+        libgflags-dev \
+        libatlas-base-dev \
+        libsuitesparse-dev \
+        libceres-dev \
+    && rm -rf /var/lib/apt/lists/*
 
 # Source ROS 2 per ogni sessione interattiva
 RUN echo "source /opt/ros/humble/setup.bash" >> /root/.bashrc
@@ -75,28 +101,35 @@ RUN source /opt/ros/humble/setup.bash && \
     make px4_sitl && \
     echo "PX4-Autopilot Installed"
 
-
-### adding shortcuts for common commands --- run_px4_baylands_H1
-
-# starting the simulation without launching the gazebo interface
+# ── Shortcut: run_px4_baylands_H1 ────────────────────────────
 RUN printf '#!/bin/bash\nsource /opt/ros/humble/setup.bash\ncd /root/PX4-Autopilot\nHEADLESS=1 PX4_GZ_WORLD=baylands make px4_sitl gz_x500_depth\n' \
     > /usr/local/bin/run_px4_baylands_H1 && \
     chmod +x /usr/local/bin/run_px4_baylands_H1
 
-# executing the image bridge --- run_image_bridge
+# ── Shortcut: run_image_bridge ───────────────────────────────
 RUN printf '#!/bin/bash\nsource /opt/ros/humble/setup.bash\nros2 run ros_gz_bridge parameter_bridge /world/baylands/model/x500_depth_0/link/camera_link/sensor/IMX214/image@sensor_msgs/msg/Image[gz.msgs.Image\n' \
     > /usr/local/bin/run_image_bridge && \
     chmod +x /usr/local/bin/run_image_bridge
 
-# executing the image bridge --- run_pointcloud_bridge
-
+# ── Shortcut: run_pointcloud_bridge ──────────────────────────
 RUN printf '#!/bin/bash\nsource /opt/ros/humble/setup.bash\nros2 run ros_gz_bridge parameter_bridge \\\n  /depth_camera/points@sensor_msgs/msg/PointCloud2[gz.msgs.PointCloudPacked \\\n  /depth_camera@sensor_msgs/msg/Image[gz.msgs.Image \\\n  /camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo\n' \
     > /usr/local/bin/run_pointcloud_bridge && \
     chmod +x /usr/local/bin/run_pointcloud_bridge
 
-# ── Shortcut: run_all (background con &) ─────────────────────
+# ── Shortcut: run_1 (tutti i bridge + PX4) ───────────────────
 RUN printf '#!/bin/bash\nsource /opt/ros/humble/setup.bash\nrun_image_bridge &\nrun_pointcloud_bridge &\nrun_px4_baylands_H1\n' \
     > /usr/local/bin/run_1 && \
     chmod +x /usr/local/bin/run_1
+
+# ── CLion remote debug via SSH ───────────────────────────────
+# https://blog.jetbrains.com/clion/2020/01/using-docker-with-clion/
+RUN ( \
+    echo 'LogLevel DEBUG2'; \
+    echo 'PermitRootLogin yes'; \
+    echo 'PasswordAuthentication yes'; \
+    echo 'Subsystem sftp /usr/lib/openssh/sftp-server'; \
+  ) > /etc/ssh/sshd_config_test_clion \
+  && mkdir /run/sshd
+RUN useradd -m user && yes password | passwd user && usermod -s /bin/bash user
 
 CMD ["bash", "-c", "tmux new-session -A -s main"]
