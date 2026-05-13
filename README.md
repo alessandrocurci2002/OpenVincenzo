@@ -1,18 +1,6 @@
-# ROS 2 Humble + PX4 SITL — Docker Environment
+# ROS 2 Humble + OpenVINS Docker Environment
 
-A self-contained Docker environment for UAV simulation combining **ROS 2 Humble**, **Gazebo Harmonic**, **PX4-Autopilot SITL**, and **Micro-XRCE-DDS-Agent**. Designed for depth-camera equipped drone simulation (`x500_depth`) with full ROS ↔ Gazebo sensor bridging.
-
-***
-
-## Stack
-
-| Component | Version |
-|---|---|
-| ROS 2 | Humble (desktop-full) |
-| Gazebo | Harmonic |
-| PX4-Autopilot | v1.16.2 |
-| Micro-XRCE-DDS-Agent | v2.4.3 |
-| Base OS | Ubuntu 22.04 (Jammy) |
+Docker setup for running [OpenVINS](https://github.com/rpng/open_vins) on ROS 2 Humble (Ubuntu 22.04), with support for Gazebo Harmonic and PX4 SITL (currently disabled for faster builds during dataset evaluation).
 
 ***
 
@@ -20,151 +8,153 @@ A self-contained Docker environment for UAV simulation combining **ROS 2 Humble*
 
 ```
 .
-├── Dockerfile        # Defines the Docker image
-└── dockerRun.sh      # Script to launch the container with X11 GUI support
+├── Dockerfile          # Image definition: ROS 2 Humble + GStreamer + Gazebo Harmonic + OpenVINS
+└── start_ros.sh        # Helper script to launch the container with X11 forwarding and dataset mount
 ```
 
 ***
 
-## What's Inside the Image
+## Stack
 
-### Base Dependencies
-Standard build tools, `git`, `cmake`, `wget`, `curl`, `python3-pip`, and `tmux` for multiplexed terminal sessions inside the container.
-
-### GStreamer
-Full GStreamer pipeline support (`good`, `bad`, `ugly`, `libav` plugins) for camera stream processing.
-
-### Gazebo Harmonic
-Installed from the official OSRF repository, with the `ros-humble-ros-gzharmonic` bridge package for seamless ROS 2 ↔ Gazebo topic communication.
-
-### Micro-XRCE-DDS-Agent
-Built from source at tag `v2.4.3`. Acts as the DDS middleware agent between the PX4 uXRCE-DDS client and ROS 2.
-
-### PX4-Autopilot SITL
-Cloned at tag `v1.16.2` with all submodules. Ubuntu dependencies installed via the official `Tools/setup/ubuntu.sh` script. The `px4_sitl` target is pre-compiled at image build time to speed up the first launch.
-
-***
-
-## Shortcut Commands
-
-These scripts are installed in `/usr/local/bin/` and are callable directly from any shell session inside the container.
-
-| Command | Description |
+| Component | Version / Notes |
 |---|---|
-| `run_px4_baylands_H1` | Starts PX4 SITL with the `baylands` world and `x500_depth` model in **headless mode** (no Gazebo GUI) |
-| `run_image_bridge` | Launches the ROS ↔ Gazebo bridge for the IMX214 RGB camera image topic |
-| `run_pointcloud_bridge` | Launches the bridge for pointcloud, depth image, and camera info topics |
-| `run_1` | Starts all three commands above: bridges in background (`&`), PX4 in foreground |
-
-### Topic Mapping
-
-**Image bridge** (`run_image_bridge`):
-```
-/world/baylands/model/x500_depth_0/link/camera_link/sensor/IMX214/image
-  → sensor_msgs/msg/Image
-```
-
-**Pointcloud bridge** (`run_pointcloud_bridge`):
-```
-/depth_camera/points        → sensor_msgs/msg/PointCloud2
-/depth_camera               → sensor_msgs/msg/Image
-/camera_info                → sensor_msgs/msg/CameraInfo
-```
+| Base image | `osrf/ros:humble-desktop-full` (Ubuntu 22.04) |
+| ROS 2 | Humble Hawksbill |
+| Gazebo | Harmonic (via OSRF apt repo) |
+| GStreamer | 1.0 (dev + plugins) |
+| OpenVINS | Latest `main` from [rpng/open_vins](https://github.com/rpng/open_vins) |
+| Ceres Solver | System package (`libceres-dev`) |
+| PX4 Autopilot | v1.16.2 — **commented out** |
+| Micro-XRCE-DDS-Agent | v2.4.3 — **commented out** |
 
 ***
 
 ## Prerequisites
 
-- Docker installed and running on the host
-- Linux host with X11 (for GUI support, if not using headless mode)
-- `xauth` installed on the host
+- Docker installed and running
+- A host machine running Linux with X11 (for GUI / RViz2)
+- A `~/datasets/` folder on the host containing ROS 2 bag files (e.g. EuRoC sequences converted from ROS 1)
 
-***
-
-## Build the Image
+### Converting EuRoC bags from ROS 1 → ROS 2
 
 ```bash
-docker build -t <image_name> .
-```
+# Install a Humble-compatible version of rosbags
+pip3 install "rosbags==0.9.19"
 
-> ⚠️ The build takes approximately **15–30 minutes** as it compiles PX4, Micro-XRCE-DDS-Agent, and downloads Gazebo Harmonic.
-
-***
-
-## Run the Container
-
-### 1. Make the script executable
-
-```bash
-chmod +x ./dockerRun.sh
-```
-
-### 2. Launch the container
-
-```bash
-./dockerRun.sh <container_name> <image_name>
-```
-
-**Example:**
-
-```bash
-./dockerRun.sh px4_sim ros2_px4_image
-```
-
-The script will:
-- Grant X11 access from root (`xhost +local:root`)
-- Generate a `/tmp/.docker.xauth` file with the correct X11 credentials
-- Start the container with host networking, display forwarding, and pre-configured ROS/Gazebo environment variables
-
-***
-
-## Inside the Container
-
-The default entry point opens a `tmux` session named `main`. You can open new panes with `Ctrl+B` then `%` (vertical split) or `"` (horizontal split).
-
-### Quick full launch (headless)
-
-```bash
-run_1
-```
-
-### Manual step-by-step launch
-
-```bash
-# Terminal 1 – PX4 SITL
-run_px4_baylands_H1
-
-# Terminal 2 – Image bridge
-run_image_bridge
-
-# Terminal 3 – Pointcloud bridge
-run_pointcloud_bridge
-```
-
-### Start the Micro-XRCE-DDS-Agent (if needed separately)
-
-```bash
-MicroXRCEAgent udp4 -p 8888
+# Convert (positional argument, no --src flag)
+rosbags-convert /path/to/V1_01_easy.bag --dst ~/datasets/V1_01_easy
 ```
 
 ***
 
-## Environment Variables
+## Building the Image
 
-These are automatically injected by `dockerRun.sh`:
+```bash
+docker build -t ov_humble .
+```
 
-| Variable | Value |
-|---|---|
-| `DISPLAY` | Inherited from host |
-| `QT_X11_NO_MITSHM` | `1` |
-| `XAUTHORITY` | `/tmp/.docker.xauth` |
-| `GZ_IP` | `127.0.0.1` |
-| `ROS_DOMAIN_ID` | `0` |
+> **Note on build time and RAM:** OpenVINS is compiled inside the image with parallelism intentionally limited (`MAKEFLAGS="-j2"`, `--executor sequential`) to avoid OOM errors on machines with ≤8 GB RAM. On such systems, a standard parallel colcon build can cause the system to run out of memory and crash VS Code or other applications.
 
 ***
 
-## Notes
+## Running the Container
 
-- The container uses `--net=host` and `--privileged`: required for DDS communication between PX4 and ROS 2 on the same host.
-- Headless mode (`HEADLESS=1`) disables Gazebo rendering, reducing computational load — useful for development on machines without a dedicated GPU.
-- To re-attach to a running container: `docker exec -it <container_name> bash`
+Use the provided helper script:
+
+```bash
+chmod +x start_ros.sh
+./start_ros.sh <container_name> <image_name>
+
+# Example
+./start_ros.sh ov_container ov_humble
+```
+
+The script:
+1. Grants X11 access to the container (`xhost +local:root`)
+2. Creates a secure `.docker.xauth` file for X forwarding
+3. Runs the container with:
+   - GUI forwarding (`DISPLAY`, `XAUTHORITY`, `/tmp/.X11-unix`)
+   - `--net=host` for ROS 2 DDS discovery
+   - `--privileged` for hardware access
+   - Bind mount of `~/datasets` → `/datasets` inside the container
+   - `GZ_IP=127.0.0.1` and `ROS_DOMAIN_ID=0` preset
+
+The container starts a `tmux` session named `main`.
+
+***
+
+## Running OpenVINS on a Dataset
+
+Once inside the container, both the ROS 2 and OpenVINS workspaces are already sourced via `.bashrc`.
+
+### EuRoC MAV — monocular + IMU
+
+```bash
+ros2 launch ov_msckf subscribe.launch.py \
+    config:=euroc_mav \
+    bag:=/datasets/V1_01_easy \
+    bag_start:=0
+```
+
+### Visualize in RViz2
+
+Open a second tmux pane (`Ctrl+b "`) and run:
+
+```bash
+rviz2 -d /root/colcon_ws/src/open_vins/ov_msckf/launch/display.rviz
+```
+
+### Evaluate results
+
+```bash
+ros2 run ov_eval plot_consistency \
+    /root/colcon_ws/src/open_vins/ov_eval/data/tumvi.txt
+```
+
+***
+
+## Re-enabling PX4 + Micro-XRCE-DDS (SITL mode)
+
+All PX4-related sections in the `Dockerfile` are marked `[COMMENTED]`. To restore the full SITL stack:
+
+1. Uncomment the `[COMMENTED]` blocks in the `Dockerfile` (Micro-XRCE-DDS-Agent, PX4 clone, `ubuntu.sh`, `make px4_sitl`, and the bridge shortcuts)
+2. Rebuild the image:
+   ```bash
+   docker build -t px4_humble .
+   ```
+3. Launch with the same `start_ros.sh` script
+
+***
+
+## Differences vs. the Official OpenVINS Docker Guide
+
+The [official OpenVINS Docker guide](https://docs.openvins.com/dev-docker.html) uses a minimal approach: the source code is **not baked into the image**. Instead, the workspace is bind-mounted at runtime and built manually inside the container each time. This keeps the image small and flexible, but requires an extra manual build step on every fresh container.
+
+This setup diverges from the official guide in several ways:
+
+| Aspect | Official guide (`Dockerfile_ros2_22_04`) | This Dockerfile |
+|---|---|---|
+| **OpenVINS source** | Bind-mounted at runtime (`--mount`) | Cloned and built inside the image |
+| **Build step** | Manual (`colcon build` inside container) | Baked into `docker build` |
+| **Resulting image size** | Smaller (no compiled artifacts) | Larger (~3–4 GB extra for build products) |
+| **RAM protection** | None — may OOM on low-RAM systems | `MAKEFLAGS="-j2"` + sequential executor |
+| **Reproducibility** | Depends on the host workspace state | Fully self-contained and reproducible |
+| **SSH / CLion debug** | Included in official Dockerfile | Omitted (not needed for dataset runs) |
+| **Additional stack** | ROS 2 Humble only | + GStreamer + Gazebo Harmonic |
+| **PX4 / XRCE-DDS** | Not present | Present but commented out |
+| **X11 forwarding** | Not scripted | Automated via `start_ros.sh` |
+| **Dataset mount** | Manual `docker run` flags | Automated via `start_ros.sh` |
+
+The key trade-off: this image takes longer to build but starts instantly with no manual compilation required, which is convenient for iterative dataset evaluation.
+
+***
+
+## Environment Variables Set at Runtime
+
+| Variable | Value | Purpose |
+|---|---|---|
+| `DISPLAY` | from host | X11 GUI forwarding |
+| `QT_X11_NO_MITSHM` | `1` | Fix Qt shared memory issue in Docker |
+| `XAUTHORITY` | `/tmp/.docker.xauth` | X11 authentication |
+| `GZ_IP` | `127.0.0.1` | Force Gazebo to bind on loopback |
+| `ROS_DOMAIN_ID` | `0` | ROS 2 DDS domain isolation |
