@@ -32,6 +32,7 @@ sudo docker run -it \
   --env="ROS_DOMAIN_ID=0" \
   --volume="/tmp/.X11-unix:/tmp/.X11-unix:rw" \
   --volume="$XAUTH:$XAUTH:rw" \
+  --mount type=bind,source=$HOME/datasets,target=/datasets \
   --net=host \
   --privileged \
   $IMAGE_NAME\
