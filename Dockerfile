@@ -48,6 +48,13 @@ https://packages.osrfoundation.org/gazebo/ubuntu-stable $(lsb_release -cs) main"
 # Source ROS 2 per ogni sessione interattiva
 RUN echo "source /opt/ros/humble/setup.bash" >> /root/.bashrc
 
+# Dependencies for MacOS
+RUN apt-get update && apt-get install -y \
+    xvfb \
+    mesa-utils \
+    libgl1-mesa-dri \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /root
 
 # ── Micro-XRCE-DDS-Agent v2.4.3 ──────────────────────────────
@@ -94,9 +101,50 @@ RUN printf '#!/bin/bash\nsource /opt/ros/humble/setup.bash\nros2 run ros_gz_brid
     > /usr/local/bin/run_pointcloud_bridge && \
     chmod +x /usr/local/bin/run_pointcloud_bridge
 
-# ── Shortcut: run_all (background con &) ─────────────────────
+# ── Shortcut: run_1 (background con &) ─────────────────────
 RUN printf '#!/bin/bash\nsource /opt/ros/humble/setup.bash\nrun_image_bridge &\nrun_pointcloud_bridge &\nrun_px4_baylands_H1\n' \
     > /usr/local/bin/run_1 && \
     chmod +x /usr/local/bin/run_1
+
+# ── Shortcut: run_setup_macos (runs the setup for macos environment) ─────────────────────
+# RUN printf '#!/bin/bash\n\
+#     apt-get update\n\
+#     apt-get update && apt-get install -y libgl1-mesa-dri\n\
+#     apt-get install -y xvfb mesa-utils libgl1-mesa-dri-\n\
+#     apt-get update && apt-get install -y xvfb mesa-utils\n\
+#     unset LIBGL_ALWAYS_INDIRECT\n\
+#     export LIBGL_ALWAYS_SOFTWARE=1\n\
+#     export GALLIUM_DRIVER=llvmpipe\n\' \
+#     > /usr/local/bin/run_setup_macos && \
+#     chmod +x /usr/local/bin/run_setup_macos
+
+RUN printf '#!/bin/bash\n\
+    set -e\n\
+    unset LIBGL_ALWAYS_INDIRECT\n\
+    export LIBGL_ALWAYS_SOFTWARE=1\n\
+    export GALLIUM_DRIVER=llvmpipe\n\
+    export GZ_IP=127.0.0.1\n\
+    Xvfb :99 -screen 0 1280x1024x24 -ac +extension GLX +render -noreset &\n\
+    XVFB_PID=$!\n\
+    trap "kill $XVFB_PID" EXIT\n\
+    sleep 2\n\
+    export DISPLAY=:99\n\
+    run_1\n' > /usr/local/bin/run_setup_macos && \
+chmod +x /usr/local/bin/run_setup_macos
+
+RUN printf '#!/bin/bash\n\
+    source /opt/ros/humble/setup.bash\n\
+    \n\
+    # Configurazione forcing rendering software Mesa\n\
+    unset LIBGL_ALWAYS_INDIRECT\n\
+    export LIBGL_ALWAYS_SOFTWARE=1\n\
+    export GALLIUM_DRIVER=llvmpipe\n\
+    export MESA_GL_VERSION_OVERRIDE=3.3\n\
+    \n\
+    # Avvio di run_1 sotto server virtuale Xvfb con estensioni GLX per la telecamera\n\
+    xvfb-run --auto-servernum --server-args="-screen 0 1280x1024x24 +extension GLX +render -noreset" run_1\n' \
+> /usr/local/bin/run_1_macos && \
+chmod +x /usr/local/bin/run_1_macos
+
 
 CMD ["bash", "-c", "tmux new-session -A -s main"]
