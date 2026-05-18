@@ -4,6 +4,8 @@
 #                + Gazebo Harmonic
 #                + Micro-XRCE-DDS-Agent v2.4.3
 #                + PX4-Autopilot v1.16.2 SITL
+#                + Ceres Solver
+#                + CLion remote debug (SSH)
 # ============================================================
 FROM osrf/ros:humble-desktop-full
 
@@ -20,7 +22,22 @@ RUN apt-get update && \
         lsb-release \
         cmake \
         build-essential \
+        gcc \
+        g++ \
+        gdb \
+        clang \
+        rsync \
+        tar \
+        nano \
+        ssh \
+        openssh-server\
         python3-pip \
+        python3-dev \
+        python3-matplotlib \
+        python3-numpy \
+        python3-psutil \
+        python3-tk \
+        libeigen3-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # ── GStreamer ─────────────────────────────────────────────────
@@ -45,15 +62,18 @@ https://packages.osrfoundation.org/gazebo/ubuntu-stable $(lsb_release -cs) main"
     apt-get install -y gz-harmonic ros-humble-ros-gzharmonic && \
     rm -rf /var/lib/apt/lists/*
 
+# ── Ceres Solver ─────────────────────────────────────────────
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        libgoogle-glog-dev \
+        libgflags-dev \
+        libopenblas-dev \
+        libsuitesparse-dev \
+        libceres-dev \
+    && rm -rf /var/lib/apt/lists/*
+
 # Source ROS 2 per ogni sessione interattiva
 RUN echo "source /opt/ros/humble/setup.bash" >> /root/.bashrc
-
-# Dependencies for MacOS
-RUN apt-get update && apt-get install -y \
-    xvfb \
-    mesa-utils \
-    libgl1-mesa-dri \
-    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /root
 
@@ -67,10 +87,10 @@ RUN git clone -b v2.4.3 https://github.com/eProsima/Micro-XRCE-DDS-Agent.git && 
     ldconfig /usr/local/lib/ && \
     echo "Micro-XRCE-DDS-Agent Installed"
 
-# ── PX4-Autopilot v1.16.2: clone ─────────────────────────────
-RUN git clone https://github.com/PX4/PX4-Autopilot.git \
-        --branch v1.16.2 \
-        --recursive
+# # ── PX4-Autopilot v1.16.2: clone ─────────────────────────────
+# RUN git clone https://github.com/PX4/PX4-Autopilot.git \
+#         --branch v1.16.2 \
+#         --recursive
 
 # ── PX4: installa dipendenze Ubuntu ──────────────────────────
 RUN cd /root/PX4-Autopilot && \
@@ -82,69 +102,35 @@ RUN source /opt/ros/humble/setup.bash && \
     make px4_sitl && \
     echo "PX4-Autopilot Installed"
 
-
-### adding shortcuts for common commands --- run_px4_baylands_H1
-
-# starting the simulation without launching the gazebo interface
+# ── Shortcut: run_px4_baylands_H1 ────────────────────────────
 RUN printf '#!/bin/bash\nsource /opt/ros/humble/setup.bash\ncd /root/PX4-Autopilot\nHEADLESS=1 PX4_GZ_WORLD=baylands make px4_sitl gz_x500_depth\n' \
     > /usr/local/bin/run_px4_baylands_H1 && \
     chmod +x /usr/local/bin/run_px4_baylands_H1
 
-# executing the image bridge --- run_image_bridge
+# ── Shortcut: run_image_bridge ───────────────────────────────
 RUN printf '#!/bin/bash\nsource /opt/ros/humble/setup.bash\nros2 run ros_gz_bridge parameter_bridge /world/baylands/model/x500_depth_0/link/camera_link/sensor/IMX214/image@sensor_msgs/msg/Image[gz.msgs.Image\n' \
     > /usr/local/bin/run_image_bridge && \
     chmod +x /usr/local/bin/run_image_bridge
 
-# executing the image bridge --- run_pointcloud_bridge
-
+# ── Shortcut: run_pointcloud_bridge ──────────────────────────
 RUN printf '#!/bin/bash\nsource /opt/ros/humble/setup.bash\nros2 run ros_gz_bridge parameter_bridge \\\n  /depth_camera/points@sensor_msgs/msg/PointCloud2[gz.msgs.PointCloudPacked \\\n  /depth_camera@sensor_msgs/msg/Image[gz.msgs.Image \\\n  /camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo\n' \
     > /usr/local/bin/run_pointcloud_bridge && \
     chmod +x /usr/local/bin/run_pointcloud_bridge
 
-# ── Shortcut: run_1 (background con &) ─────────────────────
+# ── Shortcut: run_1 (tutti i bridge + PX4) ───────────────────
 RUN printf '#!/bin/bash\nsource /opt/ros/humble/setup.bash\nrun_image_bridge &\nrun_pointcloud_bridge &\nrun_px4_baylands_H1\n' \
     > /usr/local/bin/run_1 && \
     chmod +x /usr/local/bin/run_1
 
-# ── Shortcut: run_setup_macos (runs the setup for macos environment) ─────────────────────
-# RUN printf '#!/bin/bash\n\
-#     apt-get update\n\
-#     apt-get update && apt-get install -y libgl1-mesa-dri\n\
-#     apt-get install -y xvfb mesa-utils libgl1-mesa-dri-\n\
-#     apt-get update && apt-get install -y xvfb mesa-utils\n\
-#     unset LIBGL_ALWAYS_INDIRECT\n\
-#     export LIBGL_ALWAYS_SOFTWARE=1\n\
-#     export GALLIUM_DRIVER=llvmpipe\n\' \
-#     > /usr/local/bin/run_setup_macos && \
-#     chmod +x /usr/local/bin/run_setup_macos
+# ── CLion remote debug via SSH ───────────────────────────────
+# https://blog.jetbrains.com/clion/2020/01/using-docker-with-clion/
+RUN ( \
+    echo 'LogLevel DEBUG2'; \
+    echo 'PermitRootLogin yes'; \
+    echo 'PasswordAuthentication yes'; \
+    echo 'Subsystem sftp /usr/lib/openssh/sftp-server'; \
+  ) > /etc/ssh/sshd_config_test_clion \
+  && mkdir /run/sshd
+RUN useradd -m user && yes password | passwd user && usermod -s /bin/bash user
 
-RUN printf '#!/bin/bash\n\
-    set -e\n\
-    unset LIBGL_ALWAYS_INDIRECT\n\
-    export LIBGL_ALWAYS_SOFTWARE=1\n\
-    export GALLIUM_DRIVER=llvmpipe\n\
-    export GZ_IP=127.0.0.1\n\
-    Xvfb :99 -screen 0 1280x1024x24 -ac +extension GLX +render -noreset &\n\
-    XVFB_PID=$!\n\
-    trap "kill $XVFB_PID" EXIT\n\
-    sleep 2\n\
-    export DISPLAY=:99\n\
-    run_1\n' > /usr/local/bin/run_setup_macos && \
-chmod +x /usr/local/bin/run_setup_macos
-
-RUN printf '#!/bin/bash\n\
-    source /opt/ros/humble/setup.bash\n\
-    \n\
-    # Configurazione forcing rendering software Mesa\n\
-    unset LIBGL_ALWAYS_INDIRECT\n\
-    export LIBGL_ALWAYS_SOFTWARE=1\n\
-    export GALLIUM_DRIVER=llvmpipe\n\
-    export MESA_GL_VERSION_OVERRIDE=3.3\n\
-    \n\
-    # Avvio di run_1 sotto server virtuale Xvfb con estensioni GLX per la telecamera\n\
-    xvfb-run --auto-servernum --server-args="-screen 0 1280x1024x24 +extension GLX +render -noreset" run_1\n' \
-> /usr/local/bin/run_1_macos && \
-chmod +x /usr/local/bin/run_1_macos
-
-
-CMD ["bash", "-c", "tmux new-session -A -s main"]
+CMD ["bash", "-c", "/usr/sbin/sshd && tmux new-session -A -s main"]
