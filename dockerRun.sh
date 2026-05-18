@@ -32,6 +32,7 @@ sudo docker run -it \
   --env="ROS_DOMAIN_ID=0" \
   --volume="/tmp/.X11-unix:/tmp/.X11-unix:rw" \
   --volume="$XAUTH:$XAUTH:rw" \
+  --volume="$(pwd)/PX4-Autopilot:/root/PX4-Autopilot" \
   --net=host \
   --privileged \
   $IMAGE_NAME\

@@ -87,20 +87,18 @@ RUN git clone -b v2.4.3 https://github.com/eProsima/Micro-XRCE-DDS-Agent.git && 
     ldconfig /usr/local/lib/ && \
     echo "Micro-XRCE-DDS-Agent Installed"
 
-# # ── PX4-Autopilot v1.16.2: clone ─────────────────────────────
-# RUN git clone https://github.com/PX4/PX4-Autopilot.git \
-#         --branch v1.16.2 \
-#         --recursive
+    RUN git config --global --add safe.directory '*'
 
-# ── PX4: installa dipendenze Ubuntu ──────────────────────────
-RUN cd /root/PX4-Autopilot && \
-    DEBIAN_FRONTEND=noninteractive bash ./Tools/setup/ubuntu.sh --no-nuttx
-
-# ── PX4: build px4_sitl base ─────────────────────────────────
-RUN source /opt/ros/humble/setup.bash && \
-    cd /root/PX4-Autopilot && \
-    make px4_sitl && \
-    echo "PX4-Autopilot Installed"
+# ── Shortcut: install_px4 ─────────────────────────────────────
+RUN printf '#!/bin/bash\n\
+    set -e\n\
+    cd /root/PX4-Autopilot\n\
+    DEBIAN_FRONTEND=noninteractive bash ./Tools/setup/ubuntu.sh --no-nuttx\n\
+    source /opt/ros/humble/setup.bash\n\
+    make px4_sitl\n\
+    echo "PX4-Autopilot Installed"\n' \
+    > /usr/local/bin/install_px4 && \
+    chmod +x /usr/local/bin/install_px4
 
 # ── Shortcut: run_px4_baylands_H1 ────────────────────────────
 RUN printf '#!/bin/bash\nsource /opt/ros/humble/setup.bash\ncd /root/PX4-Autopilot\nHEADLESS=1 PX4_GZ_WORLD=baylands make px4_sitl gz_x500_depth\n' \
@@ -111,6 +109,16 @@ RUN printf '#!/bin/bash\nsource /opt/ros/humble/setup.bash\ncd /root/PX4-Autopil
 RUN printf '#!/bin/bash\nsource /opt/ros/humble/setup.bash\nros2 run ros_gz_bridge parameter_bridge /world/baylands/model/x500_depth_0/link/camera_link/sensor/IMX214/image@sensor_msgs/msg/Image[gz.msgs.Image\n' \
     > /usr/local/bin/run_image_bridge && \
     chmod +x /usr/local/bin/run_image_bridge
+    
+# ── Shortcut: run_image_bridge_left ───────────────────────────
+RUN printf '#!/bin/bash\nsource /opt/ros/humble/setup.bash\nros2 run ros_gz_bridge parameter_bridge /world/baylands/model/x500_depth_0/link/camera_link/sensor/left_camera/image@sensor_msgs/msg/Image[gz.msgs.Image\n' \
+    > /usr/local/bin/run_image_bridge_left && \
+    chmod +x /usr/local/bin/run_image_bridge_left
+
+# ── Shortcut: run_image_bridge_right ──────────────────────────
+RUN printf '#!/bin/bash\nsource /opt/ros/humble/setup.bash\nros2 run ros_gz_bridge parameter_bridge /world/baylands/model/x500_depth_0/link/camera_link/sensor/right_camera/image@sensor_msgs/msg/Image[gz.msgs.Image\n' \
+    > /usr/local/bin/run_image_bridge_right && \
+    chmod +x /usr/local/bin/run_image_bridge_right
 
 # ── Shortcut: run_pointcloud_bridge ──────────────────────────
 RUN printf '#!/bin/bash\nsource /opt/ros/humble/setup.bash\nros2 run ros_gz_bridge parameter_bridge \\\n  /depth_camera/points@sensor_msgs/msg/PointCloud2[gz.msgs.PointCloudPacked \\\n  /depth_camera@sensor_msgs/msg/Image[gz.msgs.Image \\\n  /camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo\n' \
