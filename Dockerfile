@@ -77,6 +77,10 @@ RUN echo "source /opt/ros/humble/setup.bash" >> /root/.bashrc
 
 WORKDIR /root
 
+# RUN git clone --recursive -b v1.16.2-stereo https://github.com/FedericoDD/PX4-Autopilot.git && \
+#     echo "PX4 Downloaded"
+
+
 # ── Micro-XRCE-DDS-Agent v2.4.3 ──────────────────────────────
 RUN git clone -b v2.4.3 https://github.com/eProsima/Micro-XRCE-DDS-Agent.git && \
     cd Micro-XRCE-DDS-Agent && \
@@ -87,18 +91,10 @@ RUN git clone -b v2.4.3 https://github.com/eProsima/Micro-XRCE-DDS-Agent.git && 
     ldconfig /usr/local/lib/ && \
     echo "Micro-XRCE-DDS-Agent Installed"
 
-    RUN git config --global --add safe.directory '*'
+RUN git config --global --add safe.directory '*'
 
 # ── Shortcut: install_px4 ─────────────────────────────────────
-RUN printf '#!/bin/bash\n\
-    set -e\n\
-    cd /root/PX4-Autopilot\n\
-    DEBIAN_FRONTEND=noninteractive bash ./Tools/setup/ubuntu.sh --no-nuttx\n\
-    source /opt/ros/humble/setup.bash\n\
-    make px4_sitl\n\
-    echo "PX4-Autopilot Installed"\n' \
-    > /usr/local/bin/install_px4 && \
-    chmod +x /usr/local/bin/install_px4
+
 
 # ── Shortcut: run_px4_baylands_H1 ────────────────────────────
 RUN printf '#!/bin/bash\nsource /opt/ros/humble/setup.bash\ncd /root/PX4-Autopilot\nHEADLESS=1 PX4_GZ_WORLD=baylands make px4_sitl gz_x500_depth\n' \
@@ -109,7 +105,7 @@ RUN printf '#!/bin/bash\nsource /opt/ros/humble/setup.bash\ncd /root/PX4-Autopil
 RUN printf '#!/bin/bash\nsource /opt/ros/humble/setup.bash\nros2 run ros_gz_bridge parameter_bridge /world/baylands/model/x500_depth_0/link/camera_link/sensor/IMX214/image@sensor_msgs/msg/Image[gz.msgs.Image\n' \
     > /usr/local/bin/run_image_bridge && \
     chmod +x /usr/local/bin/run_image_bridge
-    
+
 # ── Shortcut: run_image_bridge_left ───────────────────────────
 RUN printf '#!/bin/bash\nsource /opt/ros/humble/setup.bash\nros2 run ros_gz_bridge parameter_bridge /world/baylands/model/x500_depth_0/link/camera_link/sensor/left_camera/image@sensor_msgs/msg/Image[gz.msgs.Image\n' \
     > /usr/local/bin/run_image_bridge_left && \
@@ -141,4 +137,4 @@ RUN ( \
   && mkdir /run/sshd
 RUN useradd -m user && yes password | passwd user && usermod -s /bin/bash user
 
-CMD ["bash", "-c", "/usr/sbin/sshd && tmux new-session -A -s main"]
+CMD ["bash", "-c", "DEBIAN_FRONTEND=noninteractive /usr/sbin/sshd && cd /root/PX4-Autopilot && DEBIAN_FRONTEND=noninteractive bash ./Tools/setup/ubuntu.sh --no-nuttx && echo 'PX4-Autopilot Installed' && tmux new-session -A -s main"]

@@ -37,3 +37,4 @@ docker run -it \
   --privileged \
   $IMAGE_NAME \
   bash
+  
