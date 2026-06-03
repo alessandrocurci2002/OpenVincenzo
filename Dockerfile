@@ -77,10 +77,6 @@ RUN echo "source /opt/ros/humble/setup.bash" >> /root/.bashrc
 
 WORKDIR /root
 
-# RUN git clone --recursive -b v1.16.2-stereo https://github.com/FedericoDD/PX4-Autopilot.git && \
-#     echo "PX4 Downloaded"
-
-
 # ── Micro-XRCE-DDS-Agent v2.4.3 ──────────────────────────────
 RUN git clone -b v2.4.3 https://github.com/eProsima/Micro-XRCE-DDS-Agent.git && \
     cd Micro-XRCE-DDS-Agent && \
@@ -93,8 +89,34 @@ RUN git clone -b v2.4.3 https://github.com/eProsima/Micro-XRCE-DDS-Agent.git && 
 
 RUN git config --global --add safe.directory '*'
 
-# ── Shortcut: install_px4 ─────────────────────────────────────
+# ── OpenVINS: dipendenze (da Dockerfile_ros2_22_04) ──────────
+# Eigen3, nano, Ceres solver e librerie Python per ov_eval
+RUN apt-get update && \
+    apt-get install -y \
+        libeigen3-dev \
+        nano \
+        libgoogle-glog-dev \
+        libgflags-dev \
+        libatlas-base-dev \
+        libsuitesparse-dev \
+        libceres-dev \
+        python3-dev \
+        python3-matplotlib \
+        python3-numpy \
+        python3-psutil \
+        python3-tk \
+    && rm -rf /var/lib/apt/lists/*
 
+
+
+# ── OpenVINS: workspace ROS 2 + clone ────────────────────────
+
+RUN apt-get update && \
+    apt-get install -y \
+        libatlas-base-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN mkdir -p /root/colcon_ws/src
 
 # ── Shortcut: run_px4_baylands_H1 ────────────────────────────
 RUN printf '#!/bin/bash\nsource /opt/ros/humble/setup.bash\ncd /root/PX4-Autopilot\nHEADLESS=1 PX4_GZ_WORLD=baylands make px4_sitl gz_x500_depth\n' \
@@ -121,8 +143,13 @@ RUN printf '#!/bin/bash\nsource /opt/ros/humble/setup.bash\nros2 run ros_gz_brid
     > /usr/local/bin/run_pointcloud_bridge && \
     chmod +x /usr/local/bin/run_pointcloud_bridge
 
+    # ── Shortcut: run_imu_bridge ──────────────────────────
+RUN printf '#!/bin/bash\nsource /opt/ros/humble/setup.bash\nros2 run ros_gz_bridge parameter_bridge \\\n  /world/baylands/model/x500_depth_0/link/base_link/sensor/imu_sensor/imu@sensor_msgs/msg/Imu[gz.msgs.IMU\n' \
+    > /usr/local/bin/run_imu_bridge && \
+    chmod +x /usr/local/bin/run_imu_bridge
+
 # ── Shortcut: run_1 (tutti i bridge + PX4) ───────────────────
-RUN printf '#!/bin/bash\nsource /opt/ros/humble/setup.bash\nrun_image_bridge &\nrun_pointcloud_bridge &\nrun_px4_baylands_H1\n' \
+RUN printf '#!/bin/bash\nsource /opt/ros/humble/setup.bash\nrun_image_bridge &\nrun_pointcloud_bridge &\nrun_image_bridge_left &\nrun_image_bridge_right &\nrun_imu_bridge &\nrun_px4_baylands_H1\n' \
     > /usr/local/bin/run_1 && \
     chmod +x /usr/local/bin/run_1
 
@@ -137,4 +164,23 @@ RUN ( \
   && mkdir /run/sshd
 RUN useradd -m user && yes password | passwd user && usermod -s /bin/bash user
 
-CMD ["bash", "-c", "DEBIAN_FRONTEND=noninteractive /usr/sbin/sshd && cd /root/PX4-Autopilot && DEBIAN_FRONTEND=noninteractive bash ./Tools/setup/ubuntu.sh --no-nuttx && echo 'PX4-Autopilot Installed' && tmux new-session -A -s main"]
+# CMD ["bash", "-c", "\
+# DEBIAN_FRONTEND=noninteractive /usr/sbin/sshd && \
+# cd /root/PX4-Autopilot && \
+# DEBIAN_FRONTEND=noninteractive bash ./Tools/setup/ubuntu.sh --no-nuttx && \
+# echo 'PX4-Autopilot Installed' && \
+# source /opt/ros/humble/setup.bash && \
+# apt-get update && \
+# cd /root/colcon_ws && \
+# rosdep install --from-paths src --ignore-src -r -y && \
+# MAKEFLAGS='-j2' colcon build --symlink-install \
+#     --executor sequential \
+#     --packages-select ov_core ov_init ov_msckf ov_eval && \
+# rm -rf /var/lib/apt/lists/* && \
+# tmux new-session -A -s main"]
+
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["tmux", "new-session", "-A", "-s", "main"]

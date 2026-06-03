@@ -33,6 +33,7 @@ sudo docker run -it \
   --volume="/tmp/.X11-unix:/tmp/.X11-unix:rw" \
   --volume="$XAUTH:$XAUTH:rw" \
   --volume="$(pwd)/PX4-Autopilot:/root/PX4-Autopilot" \
+  --volume="$(pwd)/colcon_ws/src/open_vins:/root/colcon_ws/src/open_vins" \
   --net=host \
   --privileged \
   $IMAGE_NAME\
