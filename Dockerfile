@@ -22,7 +22,22 @@ RUN apt-get update && \
         lsb-release \
         cmake \
         build-essential \
+        gcc \
+        g++ \
+        gdb \
+        clang \
+        rsync \
+        tar \
+        nano \
+        ssh \
+        openssh-server\
         python3-pip \
+        python3-dev \
+        python3-matplotlib \
+        python3-numpy \
+        python3-psutil \
+        python3-tk \
+        libeigen3-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # ── GStreamer ─────────────────────────────────────────────────
@@ -46,6 +61,16 @@ https://packages.osrfoundation.org/gazebo/ubuntu-stable $(lsb_release -cs) main"
     apt-get update && \
     apt-get install -y gz-harmonic ros-humble-ros-gzharmonic && \
     rm -rf /var/lib/apt/lists/*
+
+# ── Ceres Solver ─────────────────────────────────────────────
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        libgoogle-glog-dev \
+        libgflags-dev \
+        libopenblas-dev \
+        libsuitesparse-dev \
+        libceres-dev \
+    && rm -rf /var/lib/apt/lists/*
 
 # Source ROS 2 per ogni sessione interattiva
 RUN echo "source /opt/ros/humble/setup.bash" >> /root/.bashrc
@@ -208,4 +233,15 @@ RUN printf '#!/bin/bash\n\
 chmod +x /usr/local/bin/run_1_macos
 
 
-CMD ["bash", "-c", "tmux new-session -A -s main"]
+# ── CLion remote debug via SSH ───────────────────────────────
+# https://blog.jetbrains.com/clion/2020/01/using-docker-with-clion/
+RUN ( \
+    echo 'LogLevel DEBUG2'; \
+    echo 'PermitRootLogin yes'; \
+    echo 'PasswordAuthentication yes'; \
+    echo 'Subsystem sftp /usr/lib/openssh/sftp-server'; \
+  ) > /etc/ssh/sshd_config_test_clion \
+  && mkdir /run/sshd
+RUN useradd -m user && yes password | passwd user && usermod -s /bin/bash user
+
+CMD ["bash", "-c", "/usr/sbin/sshd && tmux new-session -A -s main"]
