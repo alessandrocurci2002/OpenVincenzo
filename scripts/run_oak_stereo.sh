@@ -4,9 +4,15 @@ set -euo pipefail
 ROS_DISTRO="${ROS_DISTRO:-humble}"
 OAK_LAUNCH_FILE="${OAK_LAUNCH_FILE:-rgbd_pcl.launch.py}"
 
-source "/opt/ros/${ROS_DISTRO}/setup.bash"
+source_setup() {
+  set +u
+  source "$1"
+  set -u
+}
+
+source_setup "/opt/ros/${ROS_DISTRO}/setup.bash"
 if [[ -f /root/colcon_ws/install/setup.bash ]]; then
-  source /root/colcon_ws/install/setup.bash
+  source_setup /root/colcon_ws/install/setup.bash
 fi
 
 ros2 pkg prefix depthai_ros_driver_v3 >/dev/null 2>&1 || {

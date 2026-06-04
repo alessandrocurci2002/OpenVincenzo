@@ -6,9 +6,15 @@ OAK_LAUNCH_FILE="${OAK_LAUNCH_FILE:-rgbd_pcl.launch.py}"
 OAK_BOOT_SECONDS="${OAK_BOOT_SECONDS:-10}"
 OAK_TOPIC_PATTERN="${OAK_TOPIC_PATTERN:-/oak|/camera|/rgb|/stereo|/depth|/imu}"
 
-source "/opt/ros/${ROS_DISTRO}/setup.bash"
+source_setup() {
+  set +u
+  source "$1"
+  set -u
+}
+
+source_setup "/opt/ros/${ROS_DISTRO}/setup.bash"
 if [[ -f /root/colcon_ws/install/setup.bash ]]; then
-  source /root/colcon_ws/install/setup.bash
+  source_setup /root/colcon_ws/install/setup.bash
 fi
 
 ros2 pkg prefix depthai_ros_driver_v3 >/dev/null 2>&1 || {

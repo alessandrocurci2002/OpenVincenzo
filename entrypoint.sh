@@ -4,7 +4,13 @@ set -euo pipefail
 export DEBIAN_FRONTEND=noninteractive
 ROS_DISTRO="${ROS_DISTRO:-humble}"
 
-source "/opt/ros/${ROS_DISTRO}/setup.bash"
+source_setup() {
+    set +u
+    source "$1"
+    set -u
+}
+
+source_setup "/opt/ros/${ROS_DISTRO}/setup.bash"
 
 if [[ "${START_SSHD:-1}" == "1" ]]; then
     mkdir -p /run/sshd
@@ -39,7 +45,7 @@ if [[ "${BUILD_OPENVINS:-1}" == "1" ]]; then
 fi
 
 if [[ -f /root/colcon_ws/install/setup.bash ]]; then
-    source /root/colcon_ws/install/setup.bash
+    source_setup /root/colcon_ws/install/setup.bash
 fi
 
 exec "$@"
