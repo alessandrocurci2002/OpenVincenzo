@@ -150,6 +150,13 @@ make smoke-oak
 make oak-stereo
 ```
 
+For the first local run, build the image before starting a container:
+
+```bash
+sudo make build
+sudo make run
+```
+
 Common overrides:
 
 ```bash
@@ -159,6 +166,8 @@ make shell-full
 make build IMAGE=my-openvincenzo:dev
 make oak-stereo OAK_LAUNCH_FILE=driver.launch.py
 ```
+
+The Makefile sets `BUILDX_GIT_INFO=0` for Docker builds to avoid Buildx warnings when the build context is copied without a usable `.git` directory. The CI still tags images from the GitHub commit SHA.
 
 ### CI/CD
 

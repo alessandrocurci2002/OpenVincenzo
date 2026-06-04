@@ -3,6 +3,8 @@ OAK_IMAGE ?= openvincenzo:humble-oak
 ARM_IMAGE ?= openvincenzo:humble-arm64
 OAK_ARM_IMAGE ?= openvincenzo:humble-oak-arm64
 PLATFORM ?= linux/arm64/v8
+BUILDX_GIT_INFO ?= 0
+DOCKER ?= docker
 
 RUN_PX4_SETUP ?= 0
 BUILD_OPENVINS ?= 0
@@ -56,34 +58,48 @@ help:
 
 .PHONY: build
 build:
-	docker build --target production -t $(IMAGE) .
+	BUILDX_GIT_INFO=$(BUILDX_GIT_INFO) $(DOCKER) build --target production -t $(IMAGE) .
 
 .PHONY: build-oak
 build-oak:
-	docker build --target oak -t $(OAK_IMAGE) .
+	BUILDX_GIT_INFO=$(BUILDX_GIT_INFO) $(DOCKER) build --target oak -t $(OAK_IMAGE) .
 
 .PHONY: build-arm64
 build-arm64:
-	docker buildx build --platform $(PLATFORM) --target production -t $(ARM_IMAGE) --load .
+	BUILDX_GIT_INFO=$(BUILDX_GIT_INFO) $(DOCKER) buildx build --platform $(PLATFORM) --target production -t $(ARM_IMAGE) --load .
 
 .PHONY: build-oak-arm64
 build-oak-arm64:
-	docker buildx build --platform $(PLATFORM) --target oak -t $(OAK_ARM_IMAGE) --load .
+	BUILDX_GIT_INFO=$(BUILDX_GIT_INFO) $(DOCKER) buildx build --platform $(PLATFORM) --target oak -t $(OAK_ARM_IMAGE) --load .
+
+.PHONY: ensure-image
+ensure-image:
+	@$(DOCKER) image inspect $(IMAGE) >/dev/null 2>&1 || { \
+		echo "Image $(IMAGE) not found. Build it first with: make build"; \
+		exit 1; \
+	}
+
+.PHONY: ensure-oak-image
+ensure-oak-image:
+	@$(DOCKER) image inspect $(OAK_IMAGE) >/dev/null 2>&1 || { \
+		echo "Image $(OAK_IMAGE) not found. Build it first with: make build-oak"; \
+		exit 1; \
+	}
 
 .PHONY: run
-run:
+run: ensure-image
 	chmod +x $(RUNNER)
 	ROS_DOMAIN_ID=$(ROS_DOMAIN_ID) RUN_PX4_SETUP=$(RUN_PX4_SETUP) BUILD_OPENVINS=$(BUILD_OPENVINS) \
 		$(RUNNER) $(CONTAINER) $(IMAGE)
 
 .PHONY: shell
-shell:
+shell: ensure-image
 	chmod +x $(RUNNER)
 	ROS_DOMAIN_ID=$(ROS_DOMAIN_ID) RUN_PX4_SETUP=$(RUN_PX4_SETUP) BUILD_OPENVINS=$(BUILD_OPENVINS) \
 		$(RUNNER) $(CONTAINER) $(IMAGE) bash
 
 .PHONY: rviz
-rviz:
+rviz: ensure-image
 	chmod +x $(RUNNER)
 	ROS_DOMAIN_ID=$(ROS_DOMAIN_ID) RUN_PX4_SETUP=$(RUN_PX4_SETUP) BUILD_OPENVINS=$(BUILD_OPENVINS) \
 		$(RUNNER) $(CONTAINER) $(IMAGE) rviz2
@@ -97,13 +113,13 @@ shell-full:
 	$(MAKE) shell RUN_PX4_SETUP=1 BUILD_OPENVINS=1
 
 .PHONY: smoke
-smoke:
+smoke: ensure-image
 	chmod +x $(RUNNER)
 	RUN_PX4_SETUP=0 BUILD_OPENVINS=0 \
 		$(RUNNER) $(SMOKE_CONTAINER) $(IMAGE) smoke_no_oak
 
 .PHONY: oak-stereo
-oak-stereo:
+oak-stereo: ensure-oak-image
 	chmod +x $(OAK_RUNNER)
 	ROS_DOMAIN_ID=$(ROS_DOMAIN_ID) RUN_PX4_SETUP=$(RUN_PX4_SETUP) BUILD_OPENVINS=$(BUILD_OPENVINS) OAK_LAUNCH_FILE=$(OAK_LAUNCH_FILE) \
 		$(OAK_RUNNER) $(OAK_CONTAINER) $(OAK_IMAGE) run_oak_stereo
@@ -112,13 +128,13 @@ oak-stereo:
 run-oak: oak-stereo
 
 .PHONY: oak-shell
-oak-shell:
+oak-shell: ensure-oak-image
 	chmod +x $(OAK_RUNNER)
 	ROS_DOMAIN_ID=$(ROS_DOMAIN_ID) RUN_PX4_SETUP=$(RUN_PX4_SETUP) BUILD_OPENVINS=$(BUILD_OPENVINS) \
 		$(OAK_RUNNER) $(OAK_CONTAINER) $(OAK_IMAGE) bash
 
 .PHONY: smoke-oak
-smoke-oak:
+smoke-oak: ensure-oak-image
 	chmod +x $(OAK_RUNNER)
 	RUN_PX4_SETUP=0 BUILD_OPENVINS=0 OAK_LAUNCH_FILE=$(OAK_LAUNCH_FILE) OAK_BOOT_SECONDS=$(OAK_BOOT_SECONDS) \
 		$(OAK_RUNNER) $(OAK_SMOKE_CONTAINER) $(OAK_IMAGE) smoke_oak
@@ -137,9 +153,9 @@ check-scripts:
 
 .PHONY: check-dockerfile
 check-dockerfile:
-	docker build --check --target production .
-	docker build --check --target oak .
+	BUILDX_GIT_INFO=$(BUILDX_GIT_INFO) $(DOCKER) build --check --target production .
+	BUILDX_GIT_INFO=$(BUILDX_GIT_INFO) $(DOCKER) build --check --target oak .
 
 .PHONY: ps
 ps:
-	docker ps --format "table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}"
+	$(DOCKER) ps --format "table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}"

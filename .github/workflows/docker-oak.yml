@@ -49,6 +49,7 @@ env:
   REGISTRY: ghcr.io
   DOCKER_TARGET: oak
   PLATFORMS: linux/amd64,linux/arm64
+  BUILDX_GIT_INFO: "0"
 
 jobs:
   build:
