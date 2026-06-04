@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - master
+      - dev/AArch64
     paths:
       - Dockerfile
       - entrypoint.sh
@@ -16,6 +17,7 @@ on:
     branches:
       - main
       - master
+      - dev/AArch64
     tags:
       - v*
     paths:
