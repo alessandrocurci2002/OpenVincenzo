@@ -48,6 +48,7 @@ help:
 	@echo "  make oak-shell          Open bash in the OAK-D Pro container"
 	@echo ""
 	@echo "Host setup:"
+	@echo "  make setup-px4-host     Initialize/update the PX4-Autopilot submodule"
 	@echo "  make setup-oak-host     Install Luxonis udev rule on the Raspberry Pi host"
 	@echo "  make check-scripts      Validate shell script syntax"
 	@echo ""
@@ -144,6 +145,10 @@ setup-oak-host:
 	echo 'SUBSYSTEM=="usb", ATTRS{idVendor}=="03e7", MODE="0666"' | sudo tee /etc/udev/rules.d/80-movidius.rules
 	sudo udevadm control --reload-rules
 	sudo udevadm trigger
+
+.PHONY: setup-px4-host
+setup-px4-host:
+	git submodule update --init --recursive PX4-Autopilot
 
 .PHONY: check-scripts
 check-scripts:

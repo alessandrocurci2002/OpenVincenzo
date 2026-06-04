@@ -170,6 +170,7 @@ make oak-stereo
 For the first local run, build the image before starting a container:
 
 ```bash
+make setup-px4-host
 sudo make build
 sudo make run
 ```
