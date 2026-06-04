@@ -71,7 +71,7 @@ cd ..
 
 **GStreamer** — full plugin set (`good`, `bad`, `ugly`, `libav`) for camera stream handling.
 
-**Gazebo Harmonic** — installed from the OSRF repository. Includes `ros-humble-ros-gzharmonic` for ROS 2 ↔ Gazebo bridging.
+**Gazebo Harmonic** — installed from the OSRF repository. Includes `ros-humble-ros-gz-bridge` for ROS 2 ↔ Gazebo bridging.
 
 **Ceres Solver** — installed via `apt` (`libceres-dev`, `libgoogle-glog-dev`, `libsuitesparse-dev`, `libopenblas-dev`).
 

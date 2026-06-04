@@ -68,7 +68,7 @@ RUN curl https://packages.osrfoundation.org/gazebo.gpg \
 https://packages.osrfoundation.org/gazebo/ubuntu-stable $(lsb_release -cs) main" \
         | tee /etc/apt/sources.list.d/gazebo-stable.list > /dev/null && \
     apt-get update && \
-    apt-get install -y --no-install-recommends gz-harmonic ros-${ROS_DISTRO}-ros-gzharmonic && \
+    apt-get install -y --no-install-recommends gz-harmonic ros-${ROS_DISTRO}-ros-gz-bridge && \
     rm -rf /var/lib/apt/lists/*
 
 # ── Ceres Solver ─────────────────────────────────────────────
