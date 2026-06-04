@@ -99,6 +99,23 @@ Available in any shell inside the container (`/usr/local/bin/`):
 | `run_image_bridge_right` | Bridge for right stereo camera image                                 |
 | `run_pointcloud_bridge`  | Bridge for depth pointcloud, depth image, and camera info            |
 | `run_1`                  | Starts all bridges in background, then PX4 in foreground             |
+| `setup_px4_repo`         | Clones/updates the mounted PX4 fork recursively in `/root/PX4-Autopilot` |
+| `setup_px4_deps`         | Runs PX4 `Tools/setup/ubuntu.sh --no-nuttx` inside the container     |
+
+PX4 should normally be initialized on the host, because `/root/PX4-Autopilot` is a bind mount:
+
+```bash
+git submodule update --init --recursive PX4-Autopilot
+```
+
+If you intentionally want to bootstrap it from inside the container:
+
+```bash
+setup_px4_repo
+setup_px4_deps
+```
+
+If `setup_px4_repo` is run inside the container, files are written through the bind mount and may become owned by `root` on the host.
 
 ### Topic Mapping
 

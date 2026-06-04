@@ -192,14 +192,20 @@ COPY entrypoint.sh /entrypoint.sh
 COPY scripts/smoke_no_oak.sh /usr/local/bin/smoke_no_oak
 COPY scripts/smoke_oak.sh /usr/local/bin/smoke_oak
 COPY scripts/run_oak_stereo.sh /usr/local/bin/run_oak_stereo
+COPY scripts/setup_px4_repo.sh /usr/local/bin/setup_px4_repo
+COPY scripts/setup_px4_deps.sh /usr/local/bin/setup_px4_deps
 RUN sed -i 's/\r$//' /entrypoint.sh \
     /usr/local/bin/smoke_no_oak \
     /usr/local/bin/smoke_oak \
-    /usr/local/bin/run_oak_stereo && \
+    /usr/local/bin/run_oak_stereo \
+    /usr/local/bin/setup_px4_repo \
+    /usr/local/bin/setup_px4_deps && \
     chmod +x /entrypoint.sh \
     /usr/local/bin/smoke_no_oak \
     /usr/local/bin/smoke_oak \
-    /usr/local/bin/run_oak_stereo
+    /usr/local/bin/run_oak_stereo \
+    /usr/local/bin/setup_px4_repo \
+    /usr/local/bin/setup_px4_deps
 
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["tmux", "new-session", "-A", "-s", "main"]
