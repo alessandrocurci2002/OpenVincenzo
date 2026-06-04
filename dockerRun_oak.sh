@@ -2,7 +2,7 @@
 set -euo pipefail
 
 if [ "$#" -lt 2 ]; then
-  echo "Use: ./dockerRun.sh <container_name> <image_name> [command...]"
+  echo "Use: ./dockerRun_oak.sh <container_name> <image_name> [command...]"
   exit 1
 fi
 
@@ -37,15 +37,23 @@ DOCKER_ARGS=(
   --env="ROS_DOMAIN_ID=${ROS_DOMAIN_ID:-0}"
   --env="RUN_PX4_SETUP=${RUN_PX4_SETUP:-1}"
   --env="BUILD_OPENVINS=${BUILD_OPENVINS:-1}"
+  --env="OAK_LAUNCH_FILE=${OAK_LAUNCH_FILE:-}"
+  --env="OAK_BOOT_SECONDS=${OAK_BOOT_SECONDS:-10}"
   --volume="$XAUTH:$XAUTH:rw"
   --volume="$(pwd)/PX4-Autopilot:/root/PX4-Autopilot"
   --volume="$(pwd)/colcon_ws/src/open_vins:/root/colcon_ws/src/open_vins"
+  --volume="/dev/bus/usb:/dev/bus/usb"
+  --device-cgroup-rule="c 189:* rmw"
   --net=host
   --privileged
 )
 
 if [ -d /tmp/.X11-unix ]; then
   DOCKER_ARGS+=(--volume="/tmp/.X11-unix:/tmp/.X11-unix:rw")
+fi
+
+if [ -d /run/udev ]; then
+  DOCKER_ARGS+=(--volume="/run/udev:/run/udev:ro")
 fi
 
 if [ -d /dev/dri ]; then

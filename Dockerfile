@@ -1,5 +1,5 @@
 # ============================================================
-# Dockerfile  –  ROS 2 Humble + tmux
+# Dockerfile  -  ROS 2 Humble + tmux
 #                + GStreamer
 #                + Gazebo Harmonic
 #                + Micro-XRCE-DDS-Agent v2.4.3
@@ -7,13 +7,21 @@
 #                + Ceres Solver
 #                + CLion remote debug (SSH)
 # ============================================================
-FROM osrf/ros:humble-desktop-full
+FROM ros:humble-ros-base-jammy AS runtime
 
 SHELL ["/bin/bash", "-c"]
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV ROS_DISTRO=humble
 
 # ── Dipendenze base ───────────────────────────────────────────
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
+        ros-${ROS_DISTRO}-rviz2 \
+        python3-colcon-common-extensions \
+        python3-rosdep \
+        python3-vcstool \
+        ca-certificates \
         tmux \
         git \
         wget \
@@ -28,9 +36,10 @@ RUN apt-get update && \
         clang \
         rsync \
         tar \
+        usbutils \
         nano \
         ssh \
-        openssh-server\
+        openssh-server \
         python3-pip \
         python3-dev \
         python3-matplotlib \
@@ -59,7 +68,7 @@ RUN curl https://packages.osrfoundation.org/gazebo.gpg \
 https://packages.osrfoundation.org/gazebo/ubuntu-stable $(lsb_release -cs) main" \
         | tee /etc/apt/sources.list.d/gazebo-stable.list > /dev/null && \
     apt-get update && \
-    apt-get install -y gz-harmonic ros-humble-ros-gzharmonic && \
+    apt-get install -y --no-install-recommends gz-harmonic ros-${ROS_DISTRO}-ros-gzharmonic && \
     rm -rf /var/lib/apt/lists/*
 
 # ── Ceres Solver ─────────────────────────────────────────────
@@ -73,7 +82,7 @@ RUN apt-get update && \
     && rm -rf /var/lib/apt/lists/*
 
 # Source ROS 2 per ogni sessione interattiva
-RUN echo "source /opt/ros/humble/setup.bash" >> /root/.bashrc
+RUN echo "source /opt/ros/${ROS_DISTRO}/setup.bash" >> /root/.bashrc
 
 WORKDIR /root
 
@@ -109,7 +118,7 @@ RUN apt-get update && \
 
 
 
-# ── OpenVINS: workspace ROS 2 + clone ────────────────────────
+# ── OpenVINS: workspace ROS 2 (sorgenti montati a runtime) ───
 
 RUN apt-get update && \
     apt-get install -y \
@@ -180,7 +189,33 @@ RUN useradd -m user && yes password | passwd user && usermod -s /bin/bash user
 # tmux new-session -A -s main"]
 
 COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+COPY scripts/smoke_no_oak.sh /usr/local/bin/smoke_no_oak
+COPY scripts/smoke_oak.sh /usr/local/bin/smoke_oak
+COPY scripts/run_oak_stereo.sh /usr/local/bin/run_oak_stereo
+RUN sed -i 's/\r$//' /entrypoint.sh \
+    /usr/local/bin/smoke_no_oak \
+    /usr/local/bin/smoke_oak \
+    /usr/local/bin/run_oak_stereo && \
+    chmod +x /entrypoint.sh \
+    /usr/local/bin/smoke_no_oak \
+    /usr/local/bin/smoke_oak \
+    /usr/local/bin/run_oak_stereo
 
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["tmux", "new-session", "-A", "-s", "main"]
+
+FROM runtime AS production
+
+# Optional OAK-D Pro profile. The default production target above stays on the
+# stable ROS apt repository; this target enables the ROS testing repository only
+# where Luxonis requires it for Humble/Jazzy v3 binaries.
+FROM runtime AS oak
+ARG ENABLE_ROS_TESTING_REPO=1
+RUN if [[ "${ENABLE_ROS_TESTING_REPO}" == "1" ]]; then \
+        apt-get update && \
+        apt-get install -y --no-install-recommends ros2-testing-apt-source; \
+    fi && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends ros-${ROS_DISTRO}-depthai-ros-v3 && \
+    rm -rf /var/lib/apt/lists/*
+ENV OPENVINCENZO_OAK_PROFILE=1

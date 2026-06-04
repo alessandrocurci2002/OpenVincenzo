@@ -1,0 +1,108 @@
+name: Docker OAK-D Pro
+
+on:
+  pull_request:
+    branches:
+      - main
+      - master
+    paths:
+      - Dockerfile
+      - entrypoint.sh
+      - scripts/**
+      - dockerRun_oak.sh
+      - .dockerignore
+      - .github/workflows/docker-oak.yml
+  push:
+    branches:
+      - main
+      - master
+    tags:
+      - v*
+    paths:
+      - Dockerfile
+      - entrypoint.sh
+      - scripts/**
+      - dockerRun_oak.sh
+      - .dockerignore
+      - .github/workflows/docker-oak.yml
+  workflow_dispatch:
+    inputs:
+      push_image:
+        description: Push the image to GHCR
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+  packages: write
+  attestations: write
+  id-token: write
+
+concurrency:
+  group: docker-oak-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  REGISTRY: ghcr.io
+  DOCKER_TARGET: oak
+  PLATFORMS: linux/amd64,linux/arm64
+
+jobs:
+  build:
+    name: Build OAK-D Pro image
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set lowercase image name
+        id: image
+        shell: bash
+        run: |
+          echo "name=${REGISTRY}/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4
+        with:
+          platforms: arm64
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Login to GHCR
+        if: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push_image) }}
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ steps.image.outputs.name }}
+          flavor: |
+            latest=false
+          tags: |
+            type=raw,value=oak,enable={{is_default_branch}}
+            type=sha,prefix=oak-
+            type=ref,event=pr,prefix=oak-pr-
+            type=ref,event=tag,prefix=oak-
+
+      - name: Build and optionally push OAK-D Pro image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ./Dockerfile
+          target: ${{ env.DOCKER_TARGET }}
+          platforms: ${{ env.PLATFORMS }}
+          push: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push_image) }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=oak
+          cache-to: type=gha,mode=max,scope=oak
+          sbom: true
+          provenance: mode=max

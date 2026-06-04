@@ -8,12 +8,13 @@ A Docker environment for UAV simulation with visual-inertial odometry support. C
 
 | Component             | Version / Source                                                    |
 |-----------------------|---------------------------------------------------------------------|
-| ROS 2                 | Humble (desktop-full)                                               |
+| ROS 2                 | Humble (`ros-base` + explicit RViz2)                                |
 | Gazebo                | Harmonic                                                            |
 | PX4-Autopilot         | `FedericoDD/PX4-Autopilot` @ `v1.16.2-stereo` (host submodule)     |
 | OpenVINS              | `rpng/open_vins` (built in `/root/colcon_ws`)                       |
 | Micro-XRCE-DDS-Agent  | v2.4.3                                                              |
 | Ceres Solver          | via `apt` (`libceres-dev`)                                          |
+| OAK-D Pro profile     | Optional Docker target `oak`, DepthAI ROS v3                        |
 | Base OS               | Ubuntu 22.04 (Jammy)                                                |
 
 ***
@@ -24,6 +25,8 @@ A Docker environment for UAV simulation with visual-inertial odometry support. C
 .
 ├── Dockerfile
 ├── dockerRun.sh
+├── dockerRun_oak.sh
+├── scripts/
 ├── .gitmodules
 └── PX4-Autopilot/        ← git submodule, must exist on host before running
 ```
@@ -62,7 +65,9 @@ cd ..
 
 ## What's Inside the Image
 
-**Base tools** — `git`, `cmake`, `build-essential`, `tmux`, `openssh-server`, `gdb`, Python 3 dev stack, `libeigen3-dev`.
+**Base tools** — `git`, `cmake`, `build-essential`, `tmux`, `openssh-server`, `gdb`, Python 3 dev stack, `libeigen3-dev`, `colcon`, `rosdep`.
+
+**RViz2** — installed explicitly with `ros-humble-rviz2`, without depending on the `desktop-full` image.
 
 **GStreamer** — full plugin set (`good`, `bad`, `ugly`, `libav`) for camera stream handling.
 
@@ -72,13 +77,13 @@ cd ..
 
 **Micro-XRCE-DDS-Agent v2.4.3** — built from source. Acts as the DDS agent between the PX4 uXRCE-DDS client and ROS 2.
 
-**OpenVINS** — cloned into `/root/colcon_ws/src/open_vins`. Built with `colcon` (packages: `ov_core`, `ov_init`, `ov_msckf`, `ov_eval`). Dependencies installed via `rosdep`.
+**OpenVINS** — mounted from the host into `/root/colcon_ws/src/open_vins`. Built at container startup with `colcon` (packages: `ov_core`, `ov_init`, `ov_msckf`, `ov_eval`) unless `BUILD_OPENVINS=0`.
 
 **PX4-Autopilot** — mounted from the host at `/root/PX4-Autopilot`. PX4 Ubuntu dependencies (`Tools/setup/ubuntu.sh --no-nuttx`) are installed at container startup, not at image build time.
 
-**open_vins** — cloned into `/root/colcon_ws/src/open_vins`: git clone https://github.com/alessandrocurci2002/OpenVins_StereocameraPX4.git colcon_ws/src/open_vins.Built with `colcon` (packages: `ov_core`, `ov_init`, `ov_msckf`, `ov_eval`). Dependencies installed via `rosdep`
-
 **CLion remote debug** — `sshd` configured and started at container launch. A `user/password` account is available for CLion toolchain access.
+
+**OAK-D Pro support** — optional `oak` target installs `ros-humble-depthai-ros-v3`. The default production image does not enable the ROS testing repository or install DepthAI packages.
 
 ***
 
@@ -122,10 +127,72 @@ Full Gazebo topic prefix: `/world/baylands/model/x500_depth_0/link/camera_link`
 ## Build
 
 ```bash
-docker build -t <image_name> .
+# Default production image, no OAK-D Pro driver
+docker build --target production -t openvincenzo:humble .
+
+# OAK-D Pro image
+docker build --target oak -t openvincenzo:humble-oak .
 ```
 
-The build installs Gazebo Harmonic, Micro-XRCE-DDS-Agent, and the OpenVINS workspace. Expect 20–40 minutes on the first build.
+The build installs Gazebo Harmonic, Micro-XRCE-DDS-Agent, RViz2, and runtime tools. OpenVINS is built at container startup when the host workspace is mounted. Expect 20–40 minutes on the first build.
+
+### Makefile Quick Start
+
+For day-to-day use, the Makefile wraps the Docker commands:
+
+```bash
+sudo apt install make
+make help
+make build
+make smoke
+make build-oak
+make smoke-oak
+make oak-stereo
+```
+
+Common overrides:
+
+```bash
+make run RUN_PX4_SETUP=0 BUILD_OPENVINS=0
+make run-full
+make shell-full
+make build IMAGE=my-openvincenzo:dev
+make oak-stereo OAK_LAUNCH_FILE=driver.launch.py
+```
+
+### CI/CD
+
+GitHub Actions builds one Docker workflow per public image target:
+
+- `Docker production`: builds `--target production`
+- `Docker OAK-D Pro`: builds `--target oak`
+
+Pull requests build without pushing. Pushes to `main`, `master`, or tags matching `v*` publish multi-arch images to GHCR:
+
+```text
+ghcr.io/<owner>/<repo>:production
+ghcr.io/<owner>/<repo>:production-<sha>
+ghcr.io/<owner>/<repo>:oak
+ghcr.io/<owner>/<repo>:oak-<sha>
+```
+
+Manual runs can be started from the GitHub Actions tab; set `push_image=true` to publish the image.
+
+### Raspberry Pi 5 / ARM64
+
+On the Raspberry Pi 5, build natively:
+
+```bash
+docker build --target production -t openvincenzo:humble-arm64 .
+docker build --target oak -t openvincenzo:humble-oak-arm64 .
+```
+
+From an amd64 workstation, cross-build with buildx:
+
+```bash
+docker buildx build --platform linux/arm64/v8 --target production -t openvincenzo:humble-arm64 --load .
+docker buildx build --platform linux/arm64/v8 --target oak -t openvincenzo:humble-oak-arm64 --load .
+```
 
 ***
 
@@ -142,6 +209,54 @@ At startup the container will:
 1. Start `sshd`
 2. Run `Tools/setup/ubuntu.sh --no-nuttx` from the mounted PX4 tree
 3. Open a `tmux` session named `main`
+
+Runtime setup can be controlled with environment variables:
+
+```bash
+RUN_PX4_SETUP=0 BUILD_OPENVINS=0 ./dockerRun.sh ov-test openvincenzo:humble smoke_no_oak
+```
+
+Use `RUN_PX4_SETUP=0` after PX4 dependencies are already present in the image/container layer or when running image-only smoke tests. Use `BUILD_OPENVINS=0` to skip rebuilding the mounted OpenVINS workspace.
+
+### Smoke Test Without OAK-D Pro
+
+```bash
+RUN_PX4_SETUP=0 BUILD_OPENVINS=0 ./dockerRun.sh ov-smoke openvincenzo:humble smoke_no_oak
+```
+
+This validates ROS 2, RViz2, Gazebo bridge, Micro-XRCE-DDS-Agent, and optional OpenVINS packages if they have already been built.
+
+### OAK-D Pro Host Setup
+
+On the Raspberry Pi host, install the Luxonis udev rule once:
+
+```bash
+echo 'SUBSYSTEM=="usb", ATTRS{idVendor}=="03e7", MODE="0666"' | sudo tee /etc/udev/rules.d/80-movidius.rules
+sudo udevadm control --reload-rules && sudo udevadm trigger
+```
+
+For OAK-D Pro, prefer external power or a powered USB3 hub. The Pro models can draw more current than a Raspberry Pi USB port can reliably supply under load.
+
+### Smoke Test With OAK-D Pro
+
+```bash
+chmod +x ./dockerRun_oak.sh
+RUN_PX4_SETUP=0 BUILD_OPENVINS=0 ./dockerRun_oak.sh ov-oak-smoke openvincenzo:humble-oak smoke_oak
+```
+
+The test checks the DepthAI ROS v3 driver package, verifies a Luxonis USB device with vendor id `03e7`, launches the OAK driver, and confirms camera topics appear.
+
+### Live OAK-D Pro Stereo Driver
+
+```bash
+./dockerRun_oak.sh ov-oak openvincenzo:humble-oak run_oak_stereo
+```
+
+By default `run_oak_stereo` launches `rgbd_pcl.launch.py`. Override the launch file or pass launch arguments when needed:
+
+```bash
+OAK_LAUNCH_FILE=driver.launch.py ./dockerRun_oak.sh ov-oak openvincenzo:humble-oak run_oak_stereo use_rviz:=true
+```
 
 ***
 
@@ -219,12 +334,15 @@ ros2 run ov_eval plot_consistency \
 | `XAUTHORITY`       | `/tmp/.docker.xauth` |
 | `GZ_IP`            | `127.0.0.1`          |
 | `ROS_DOMAIN_ID`    | `0`                  |
+| `RUN_PX4_SETUP`    | `1` by default in `entrypoint.sh`; Makefile defaults to `0` |
+| `BUILD_OPENVINS`   | `1` by default in `entrypoint.sh`; Makefile defaults to `0` |
 
 ***
 
 ## Notes
 
 - `--net=host` and `--privileged` are required for PX4 ↔ ROS 2 DDS communication.
+- `dockerRun_oak.sh` also maps `/dev/bus/usb` and `/run/udev` so DepthAI can access the OAK-D Pro.
 - Since `PX4-Autopilot` is mounted from the host, Git operations inside the container affect the host checkout. Keep file ownership consistent to avoid `root`-owned `.git` files.
 - Headless mode (`HEADLESS=1`) skips Gazebo rendering — use it on machines without a GPU.
 - Re-attach to a running container: `docker exec -it <container_name> bash`

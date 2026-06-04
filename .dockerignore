@@ -1,0 +1,13 @@
+.git
+.agents
+.codex
+PX4-Autopilot
+colcon_ws/build
+colcon_ws/install
+colcon_ws/log
+**/__pycache__
+**/.pytest_cache
+**/.git
+**/build
+**/install
+**/log
