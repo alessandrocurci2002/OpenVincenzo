@@ -2,10 +2,10 @@
 # Dockerfile  –  ROS 2 Humble + tmux
 #                + GStreamer
 #                + Gazebo Harmonic
-#                + OpenVINS (ROS 2 Humble / Ubuntu 22.04)
-#
-# Sections PX4 e Micro-XRCE-DDS-Agent were commented
-# in order to speed up the building process for the OpenVinsDataSet
+#                + Micro-XRCE-DDS-Agent v2.4.3
+#                + PX4-Autopilot v1.16.2 SITL
+#                + Ceres Solver
+#                + CLion remote debug (SSH)
 # ============================================================
 FROM osrf/ros:humble-desktop-full
 
@@ -75,13 +75,6 @@ RUN apt-get update && \
 # Source ROS 2 per ogni sessione interattiva
 RUN echo "source /opt/ros/humble/setup.bash" >> /root/.bashrc
 
-# Dependencies for MacOS
-RUN apt-get update && apt-get install -y \
-    xvfb \
-    mesa-utils \
-    libgl1-mesa-dri \
-    && rm -rf /var/lib/apt/lists/*
-
 WORKDIR /root
 
 # ── [COMMENTED] Micro-XRCE-DDS-Agent v2.4.3 ─────────────────
@@ -98,29 +91,7 @@ WORKDIR /root
 #     echo "Micro-XRCE-DDS-Agent Installed"
 
 
-# ── [COMMENTED] PX4-Autopilot v1.16.2: clone ────────────────
-# Commentato per velocizzare il build durante lo sviluppo con OpenVINS.
-# Decommentare quando si riattiva la simulazione SITL.
-#
-# RUN git clone https://github.com/PX4/PX4-Autopilot.git \
-#         --branch v1.16.2 \
-#         --recursive
-
-
-# ── [COMMENTED] PX4: installa dipendenze Ubuntu ─────────────
-#
-# RUN cd /root/PX4-Autopilot && \
-#     DEBIAN_FRONTEND=noninteractive bash ./Tools/setup/ubuntu.sh --no-nuttx
-
-
-# ── [COMMENTED] PX4: build px4_sitl base ────────────────────
-#
-# RUN source /opt/ros/humble/setup.bash && \
-#     cd /root/PX4-Autopilot && \
-#     make px4_sitl && \
-#     echo "PX4-Autopilot Installed"
-
-
+RUN git config --global --add safe.directory '*'
 
 # ── OpenVINS: dipendenze (da Dockerfile_ros2_22_04) ──────────
 # Eigen3, nano, Ceres solver e librerie Python per ov_eval
@@ -144,94 +115,47 @@ RUN apt-get update && \
 
 # ── OpenVINS: workspace ROS 2 + clone ────────────────────────
 
-RUN mkdir -p /root/colcon_ws/src && \
-    cd /root/colcon_ws/src && \
-    git clone https://github.com/rpng/open_vins.git
+RUN apt-get update && \
+    apt-get install -y \
+        libatlas-base-dev \
+    && rm -rf /var/lib/apt/lists/*
 
+RUN mkdir -p /root/colcon_ws/src
 
-# ── OpenVINS: installing dependencies rosdep + build ─────────────
-RUN source /opt/ros/humble/setup.bash && \
-    apt-get update && \
-    cd /root/colcon_ws && \
-    rosdep install --from-paths src --ignore-src -r -y && \
-    MAKEFLAGS="-j2" colcon build --symlink-install \
-        --executor sequential \
-        --packages-select ov_core ov_init ov_msckf ov_eval && \
-    rm -rf /var/lib/apt/lists/*
+# ── Shortcut: run_px4_baylands_H1 ────────────────────────────
+RUN printf '#!/bin/bash\nsource /opt/ros/humble/setup.bash\ncd /root/PX4-Autopilot\nHEADLESS=1 PX4_GZ_WORLD=baylands make px4_sitl gz_x500_depth\n' \
+    > /usr/local/bin/run_px4_baylands_H1 && \
+    chmod +x /usr/local/bin/run_px4_baylands_H1
 
-# Limit parallelism to prevent OOM during build.
-# --executor sequential: build one package at a time (ov_core → ov_init → ov_msckf → ov_eval).
-# MAKEFLAGS="-j2": limit CMake to 2 threads per package.
-# Without these flags, colcon spawns one GCC process per CPU core 
-# each consuming ~1-2 GB RAM, which can exhaust system memory. I had out of memory issues on my pc with 8gb ram available causing vscode to crash.
+# ── Shortcut: run_image_bridge ───────────────────────────────
+RUN printf '#!/bin/bash\nsource /opt/ros/humble/setup.bash\nros2 run ros_gz_bridge parameter_bridge /world/baylands/model/x500_depth_0/link/camera_link/sensor/IMX214/image@sensor_msgs/msg/Image[gz.msgs.Image\n' \
+    > /usr/local/bin/run_image_bridge && \
+    chmod +x /usr/local/bin/run_image_bridge
 
+# ── Shortcut: run_image_bridge_left ───────────────────────────
+RUN printf '#!/bin/bash\nsource /opt/ros/humble/setup.bash\nros2 run ros_gz_bridge parameter_bridge /world/baylands/model/x500_depth_0/link/camera_link/sensor/left_camera/image@sensor_msgs/msg/Image[gz.msgs.Image\n' \
+    > /usr/local/bin/run_image_bridge_left && \
+    chmod +x /usr/local/bin/run_image_bridge_left
 
-# Source workspace OpenVINS in ogni sessione
-RUN echo "source /root/colcon_ws/install/setup.bash" >> /root/.bashrc
+# ── Shortcut: run_image_bridge_right ──────────────────────────
+RUN printf '#!/bin/bash\nsource /opt/ros/humble/setup.bash\nros2 run ros_gz_bridge parameter_bridge /world/baylands/model/x500_depth_0/link/camera_link/sensor/right_camera/image@sensor_msgs/msg/Image[gz.msgs.Image\n' \
+    > /usr/local/bin/run_image_bridge_right && \
+    chmod +x /usr/local/bin/run_image_bridge_right
 
-### adding shortcuts for common commands --- run_px4_baylands_H1
+# ── Shortcut: run_pointcloud_bridge ──────────────────────────
+RUN printf '#!/bin/bash\nsource /opt/ros/humble/setup.bash\nros2 run ros_gz_bridge parameter_bridge \\\n  /depth_camera/points@sensor_msgs/msg/PointCloud2[gz.msgs.PointCloudPacked \\\n  /depth_camera@sensor_msgs/msg/Image[gz.msgs.Image \\\n  /camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo\n' \
+    > /usr/local/bin/run_pointcloud_bridge && \
+    chmod +x /usr/local/bin/run_pointcloud_bridge
 
-# # starting the simulation without launching the gazebo interface
-# RUN printf '#!/bin/bash\nsource /opt/ros/humble/setup.bash\ncd /root/PX4-Autopilot\nHEADLESS=1 PX4_GZ_WORLD=baylands make px4_sitl gz_x500_depth\n' \
-#     > /usr/local/bin/run_px4_baylands_H1 && \
-#     chmod +x /usr/local/bin/run_px4_baylands_H1
+    # ── Shortcut: run_imu_bridge ──────────────────────────
+RUN printf '#!/bin/bash\nsource /opt/ros/humble/setup.bash\nros2 run ros_gz_bridge parameter_bridge \\\n  /world/baylands/model/x500_depth_0/link/base_link/sensor/imu_sensor/imu@sensor_msgs/msg/Imu[gz.msgs.IMU\n' \
+    > /usr/local/bin/run_imu_bridge && \
+    chmod +x /usr/local/bin/run_imu_bridge
 
-# # executing the image bridge --- run_image_bridge
-# RUN printf '#!/bin/bash\nsource /opt/ros/humble/setup.bash\nros2 run ros_gz_bridge parameter_bridge /world/baylands/model/x500_depth_0/link/camera_link/sensor/IMX214/image@sensor_msgs/msg/Image[gz.msgs.Image\n' \
-#     > /usr/local/bin/run_image_bridge && \
-#     chmod +x /usr/local/bin/run_image_bridge
-
-# # executing the image bridge --- run_pointcloud_bridge
-
-# RUN printf '#!/bin/bash\nsource /opt/ros/humble/setup.bash\nros2 run ros_gz_bridge parameter_bridge \\\n  /depth_camera/points@sensor_msgs/msg/PointCloud2[gz.msgs.PointCloudPacked \\\n  /depth_camera@sensor_msgs/msg/Image[gz.msgs.Image \\\n  /camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo\n' \
-#     > /usr/local/bin/run_pointcloud_bridge && \
-#     chmod +x /usr/local/bin/run_pointcloud_bridge
-
-# # ── Shortcut: run_all (background con &) ─────────────────────
-# RUN printf '#!/bin/bash\nsource /opt/ros/humble/setup.bash\nrun_image_bridge &\nrun_pointcloud_bridge &\nrun_px4_baylands_H1\n' \
-#     > /usr/local/bin/run_1 && \
-#     chmod +x /usr/local/bin/run_1
-
-# ── Shortcut: run_setup_macos (runs the setup for macos environment) ─────────────────────
-# RUN printf '#!/bin/bash\n\
-#     apt-get update\n\
-#     apt-get update && apt-get install -y libgl1-mesa-dri\n\
-#     apt-get install -y xvfb mesa-utils libgl1-mesa-dri-\n\
-#     apt-get update && apt-get install -y xvfb mesa-utils\n\
-#     unset LIBGL_ALWAYS_INDIRECT\n\
-#     export LIBGL_ALWAYS_SOFTWARE=1\n\
-#     export GALLIUM_DRIVER=llvmpipe\n\' \
-#     > /usr/local/bin/run_setup_macos && \
-#     chmod +x /usr/local/bin/run_setup_macos
-
-RUN printf '#!/bin/bash\n\
-    set -e\n\
-    unset LIBGL_ALWAYS_INDIRECT\n\
-    export LIBGL_ALWAYS_SOFTWARE=1\n\
-    export GALLIUM_DRIVER=llvmpipe\n\
-    export GZ_IP=127.0.0.1\n\
-    Xvfb :99 -screen 0 1280x1024x24 -ac +extension GLX +render -noreset &\n\
-    XVFB_PID=$!\n\
-    trap "kill $XVFB_PID" EXIT\n\
-    sleep 2\n\
-    export DISPLAY=:99\n\
-    run_1\n' > /usr/local/bin/run_setup_macos && \
-chmod +x /usr/local/bin/run_setup_macos
-
-RUN printf '#!/bin/bash\n\
-    source /opt/ros/humble/setup.bash\n\
-    \n\
-    # Configurazione forcing rendering software Mesa\n\
-    unset LIBGL_ALWAYS_INDIRECT\n\
-    export LIBGL_ALWAYS_SOFTWARE=1\n\
-    export GALLIUM_DRIVER=llvmpipe\n\
-    export MESA_GL_VERSION_OVERRIDE=3.3\n\
-    \n\
-    # Avvio di run_1 sotto server virtuale Xvfb con estensioni GLX per la telecamera\n\
-    xvfb-run --auto-servernum --server-args="-screen 0 1280x1024x24 +extension GLX +render -noreset" run_1\n' \
-> /usr/local/bin/run_1_macos && \
-chmod +x /usr/local/bin/run_1_macos
-
+# ── Shortcut: run_1 (tutti i bridge + PX4) ───────────────────
+RUN printf '#!/bin/bash\nsource /opt/ros/humble/setup.bash\nrun_image_bridge &\nrun_pointcloud_bridge &\nrun_image_bridge_left &\nrun_image_bridge_right &\nrun_imu_bridge &\nrun_px4_baylands_H1\n' \
+    > /usr/local/bin/run_1 && \
+    chmod +x /usr/local/bin/run_1
 
 # ── CLion remote debug via SSH ───────────────────────────────
 # https://blog.jetbrains.com/clion/2020/01/using-docker-with-clion/
@@ -244,4 +168,23 @@ RUN ( \
   && mkdir /run/sshd
 RUN useradd -m user && yes password | passwd user && usermod -s /bin/bash user
 
-CMD ["bash", "-c", "/usr/sbin/sshd && tmux new-session -A -s main"]
+# CMD ["bash", "-c", "\
+# DEBIAN_FRONTEND=noninteractive /usr/sbin/sshd && \
+# cd /root/PX4-Autopilot && \
+# DEBIAN_FRONTEND=noninteractive bash ./Tools/setup/ubuntu.sh --no-nuttx && \
+# echo 'PX4-Autopilot Installed' && \
+# source /opt/ros/humble/setup.bash && \
+# apt-get update && \
+# cd /root/colcon_ws && \
+# rosdep install --from-paths src --ignore-src -r -y && \
+# MAKEFLAGS='-j2' colcon build --symlink-install \
+#     --executor sequential \
+#     --packages-select ov_core ov_init ov_msckf ov_eval && \
+# rm -rf /var/lib/apt/lists/* && \
+# tmux new-session -A -s main"]
+
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["tmux", "new-session", "-A", "-s", "main"]

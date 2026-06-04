@@ -1,6 +1,20 @@
-# ROS 2 Humble + OpenVINS Docker Environment
+# ROS 2 Humble + PX4 SITL + OpenVINS — Docker Environment
 
-Docker setup for running [OpenVINS](https://github.com/rpng/open_vins) on ROS 2 Humble (Ubuntu 22.04), with support for Gazebo Harmonic and PX4 SITL (currently disabled for faster builds during dataset evaluation).
+A Docker environment for UAV simulation with visual-inertial odometry support. Combines ROS 2 Humble, Gazebo Harmonic, PX4-Autopilot SITL (stereo fork), OpenVINS, and Micro-XRCE-DDS-Agent.
+
+***
+
+## Stack
+
+| Component             | Version / Source                                                    |
+|-----------------------|---------------------------------------------------------------------|
+| ROS 2                 | Humble (desktop-full)                                               |
+| Gazebo                | Harmonic                                                            |
+| PX4-Autopilot         | `FedericoDD/PX4-Autopilot` @ `v1.16.2-stereo` (host submodule)     |
+| OpenVINS              | `rpng/open_vins` (built in `/root/colcon_ws`)                       |
+| Micro-XRCE-DDS-Agent  | v2.4.3                                                              |
+| Ceres Solver          | via `apt` (`libceres-dev`)                                          |
+| Base OS               | Ubuntu 22.04 (Jammy)                                                |
 
 ***
 
@@ -8,82 +22,164 @@ Docker setup for running [OpenVINS](https://github.com/rpng/open_vins) on ROS 2 
 
 ```
 .
-├── Dockerfile          # Image definition: ROS 2 Humble + GStreamer + Gazebo Harmonic + OpenVINS
-└── start_ros.sh        # Helper script to launch the container with X11 forwarding and dataset mount
+├── Dockerfile
+├── dockerRun.sh
+├── .gitmodules
+└── PX4-Autopilot/        ← git submodule, must exist on host before running
+```
+
+***
+
+## PX4-Autopilot — Host Setup
+
+PX4 is **not cloned inside the Docker image**. It is provided as a git submodule on the host and mounted into the container at runtime.
+
+`.gitmodules`:
+```ini
+[submodule "PX4-Autopilot"]
+    path   = PX4-Autopilot
+    url    = https://github.com/FedericoDD/PX4-Autopilot.git
+    branch = v1.16.2-stereo
+```
+
+Initialize the submodule before building or running the container:
+
+```bash
+git submodule sync --recursive
+git submodule update --init --recursive
+```
+
+If the submodule is already present but on the wrong commit:
+
+```bash
+cd PX4-Autopilot
+git checkout v1.16.2-stereo
+git submodule update --init --recursive
+cd ..
 ```
 
 ***
 
 ## Stack
 
-| Component | Version / Notes |
-|---|---|
-| Base image | `osrf/ros:humble-desktop-full` (Ubuntu 22.04) |
-| ROS 2 | Humble Hawksbill |
-| Gazebo | Harmonic (via OSRF apt repo) |
-| GStreamer | 1.0 (dev + plugins) |
-| OpenVINS | Latest `main` from [rpng/open_vins](https://github.com/rpng/open_vins) |
-| Ceres Solver | System package (`libceres-dev`) |
-| PX4 Autopilot | v1.16.2 — **commented out** |
-| Micro-XRCE-DDS-Agent | v2.4.3 — **commented out** |
+**Base tools** — `git`, `cmake`, `build-essential`, `tmux`, `openssh-server`, `gdb`, Python 3 dev stack, `libeigen3-dev`.
+
+**GStreamer** — full plugin set (`good`, `bad`, `ugly`, `libav`) for camera stream handling.
+
+**Gazebo Harmonic** — installed from the OSRF repository. Includes `ros-humble-ros-gzharmonic` for ROS 2 ↔ Gazebo bridging.
+
+**Ceres Solver** — installed via `apt` (`libceres-dev`, `libgoogle-glog-dev`, `libsuitesparse-dev`, `libopenblas-dev`).
+
+**Micro-XRCE-DDS-Agent v2.4.3** — built from source. Acts as the DDS agent between the PX4 uXRCE-DDS client and ROS 2.
+
+**OpenVINS** — cloned into `/root/colcon_ws/src/open_vins`. Built with `colcon` (packages: `ov_core`, `ov_init`, `ov_msckf`, `ov_eval`). Dependencies installed via `rosdep`.
+
+**PX4-Autopilot** — mounted from the host at `/root/PX4-Autopilot`. PX4 Ubuntu dependencies (`Tools/setup/ubuntu.sh --no-nuttx`) are installed at container startup, not at image build time.
+
+**open_vins** — cloned into `/root/colcon_ws/src/open_vins`: git clone https://github.com/alessandrocurci2002/OpenVins_StereocameraPX4.git colcon_ws/src/open_vins.Built with `colcon` (packages: `ov_core`, `ov_init`, `ov_msckf`, `ov_eval`). Dependencies installed via `rosdep`
+
+**CLion remote debug** — `sshd` configured and started at container launch. A `user/password` account is available for CLion toolchain access.
+
+***
+
+## Shortcut Commands
+
+Available in any shell inside the container (`/usr/local/bin/`):
+
+| Command                  | Description                                                          |
+|--------------------------|----------------------------------------------------------------------|
+| `run_px4_baylands_H1`    | Starts PX4 SITL — `baylands` world, `gz_x500_depth`, headless       |
+| `run_image_bridge`       | ROS ↔ Gazebo bridge for IMX214 RGB image                             |
+| `run_image_bridge_left`  | Bridge for left stereo camera image                                  |
+| `run_image_bridge_right` | Bridge for right stereo camera image                                 |
+| `run_pointcloud_bridge`  | Bridge for depth pointcloud, depth image, and camera info            |
+| `run_1`                  | Starts all bridges in background, then PX4 in foreground             |
+
+### Topic Mapping
+
+Full Gazebo topic prefix: `/world/baylands/model/x500_depth_0/link/camera_link`
+
+| ROS 2 Topic                        | Type                           | Sensor               |
+|------------------------------------|--------------------------------|----------------------|
+| `.../sensor/IMX214/image`          | `sensor_msgs/msg/Image`        | RGB camera           |
+| `.../sensor/left_camera/image`     | `sensor_msgs/msg/Image`        | Left stereo camera   |
+| `.../sensor/right_camera/image`    | `sensor_msgs/msg/Image`        | Right stereo camera  |
+| `/depth_camera/points`             | `sensor_msgs/msg/PointCloud2`  | Depth camera         |
+| `/depth_camera`                    | `sensor_msgs/msg/Image`        | Depth image          |
+| `/camera_info`                     | `sensor_msgs/msg/CameraInfo`   | Camera info          |
 
 ***
 
 ## Prerequisites
 
-- Docker installed and running
-- A host machine running Linux with X11 (for GUI / RViz2)
-- A `~/datasets/` folder on the host containing ROS 2 bag files (e.g. EuRoC sequences converted from ROS 1)
+- Docker installed on the host
+- Linux host with X11 (required for Gazebo GUI; not needed in headless mode)
+- `xauth` installed on the host
+- `PX4-Autopilot/` submodule initialized on the host (see above)
 
-### Converting EuRoC bags from ROS 1 → ROS 2
+***
+
+## Build
 
 ```bash
 # Install a Humble-compatible version of rosbags
 pip3 install "rosbags==0.9.19"
 
-# Convert (positional argument, no --src flag)
-rosbags-convert /path/to/V1_01_easy.bag --dst ~/datasets/V1_01_easy
-```
+The build installs Gazebo Harmonic, Micro-XRCE-DDS-Agent, and the OpenVINS workspace. Expect 20–40 minutes on the first build.
 
 ***
 
-## Building the Image
+## Run
 
 ```bash
-docker build -t ov_humble .
+chmod +x ./dockerRun.sh
+./dockerRun.sh <container_name> <image_name>
 ```
 
-> **Note on build time and RAM:** OpenVINS is compiled inside the image with parallelism intentionally limited (`MAKEFLAGS="-j2"`, `--executor sequential`) to avoid OOM errors on machines with ≤8 GB RAM. On such systems, a standard parallel colcon build can cause the system to run out of memory and crash VS Code or other applications.
+`dockerRun.sh` mounts `./PX4-Autopilot` into the container at `/root/PX4-Autopilot`, forwards the X11 display, and sets the required environment variables.
+
+At startup the container will:
+1. Start `sshd`
+2. Run `Tools/setup/ubuntu.sh --no-nuttx` from the mounted PX4 tree
+3. Open a `tmux` session named `main`
 
 ***
 
-## Running the Container
+## Usage Inside the Container
 
-Use the provided helper script:
+## Full launch (headless)
 
 ```bash
-chmod +x start_ros.sh
-./start_ros.sh <container_name> <image_name>
-
-# Example
-./start_ros.sh ov_container ov_humble
+run_1
 ```
 
-The script:
-1. Grants X11 access to the container (`xhost +local:root`)
-2. Creates a secure `.docker.xauth` file for X forwarding
-3. Runs the container with:
-   - GUI forwarding (`DISPLAY`, `XAUTHORITY`, `/tmp/.X11-unix`)
-   - `--net=host` for ROS 2 DDS discovery
-   - `--privileged` for hardware access
-   - Bind mount of `~/datasets` → `/datasets` inside the container
-   - `GZ_IP=127.0.0.1` and `ROS_DOMAIN_ID=0` preset
+### Step-by-step
 
-The container starts a `tmux` session named `main`.
+```bash
+# PX4 SITL
+run_px4_baylands_H1
 
-***
+# Bridges (each in a separate tmux pane)
+run_image_bridge
+run_image_bridge_left
+run_image_bridge_right
+run_pointcloud_bridge
+```
 
-## Running OpenVINS on a Dataset
+## DDS Agent
+
+```bash
+MicroXRCEAgent udp4 -p 8888
+```
+
+## OpenVINS workspace
+
+```bash
+source /opt/ros/humble/setup.bash
+source /root/colcon_ws/install/setup.bash
+```
+
+### Running OpenVINS on a Dataset
 
 Once inside the container, both the ROS 2 and OpenVINS workspaces are already sourced via `.bashrc`.
 
@@ -95,6 +191,7 @@ ros2 launch ov_msckf subscribe.launch.py \
     bag:=/datasets/V1_01_easy \
     bag_start:=0
 ```
+
 
 ### Visualize in RViz2
 
@@ -113,48 +210,21 @@ ros2 run ov_eval plot_consistency \
 
 ***
 
-## Re-enabling PX4 + Micro-XRCE-DDS (SITL mode)
+## Environment Variables (injected by `dockerRun.sh`)
 
-All PX4-related sections in the `Dockerfile` are marked `[COMMENTED]`. To restore the full SITL stack:
-
-1. Uncomment the `[COMMENTED]` blocks in the `Dockerfile` (Micro-XRCE-DDS-Agent, PX4 clone, `ubuntu.sh`, `make px4_sitl`, and the bridge shortcuts)
-2. Rebuild the image:
-   ```bash
-   docker build -t px4_humble .
-   ```
-3. Launch with the same `start_ros.sh` script
-
-***
-
-## Differences vs. the Official OpenVINS Docker Guide
-
-The [official OpenVINS Docker guide](https://docs.openvins.com/dev-docker.html) uses a minimal approach: the source code is **not baked into the image**. Instead, the workspace is bind-mounted at runtime and built manually inside the container each time. This keeps the image small and flexible, but requires an extra manual build step on every fresh container.
-
-This setup diverges from the official guide in several ways:
-
-| Aspect | Official guide (`Dockerfile_ros2_22_04`) | This Dockerfile |
-|---|---|---|
-| **OpenVINS source** | Bind-mounted at runtime (`--mount`) | Cloned and built inside the image |
-| **Build step** | Manual (`colcon build` inside container) | Baked into `docker build` |
-| **Resulting image size** | Smaller (no compiled artifacts) | Larger (~3–4 GB extra for build products) |
-| **RAM protection** | None — may OOM on low-RAM systems | `MAKEFLAGS="-j2"` + sequential executor |
-| **Reproducibility** | Depends on the host workspace state | Fully self-contained and reproducible |
-| **SSH / CLion debug** | Included in official Dockerfile | Omitted (not needed for dataset runs) |
-| **Additional stack** | ROS 2 Humble only | + GStreamer + Gazebo Harmonic |
-| **PX4 / XRCE-DDS** | Not present | Present but commented out |
-| **X11 forwarding** | Not scripted | Automated via `start_ros.sh` |
-| **Dataset mount** | Manual `docker run` flags | Automated via `start_ros.sh` |
-
-The key trade-off: this image takes longer to build but starts instantly with no manual compilation required, which is convenient for iterative dataset evaluation.
+| Variable           | Value                |
+|--------------------|----------------------|
+| `DISPLAY`          | Inherited from host  |
+| `QT_X11_NO_MITSHM` | `1`                  |
+| `XAUTHORITY`       | `/tmp/.docker.xauth` |
+| `GZ_IP`            | `127.0.0.1`          |
+| `ROS_DOMAIN_ID`    | `0`                  |
 
 ***
 
-## Environment Variables Set at Runtime
+## Running the Container
 
-| Variable | Value | Purpose |
-|---|---|---|
-| `DISPLAY` | from host | X11 GUI forwarding |
-| `QT_X11_NO_MITSHM` | `1` | Fix Qt shared memory issue in Docker |
-| `XAUTHORITY` | `/tmp/.docker.xauth` | X11 authentication |
-| `GZ_IP` | `127.0.0.1` | Force Gazebo to bind on loopback |
-| `ROS_DOMAIN_ID` | `0` | ROS 2 DDS domain isolation |
+- `--net=host` and `--privileged` are required for PX4 ↔ ROS 2 DDS communication.
+- Since `PX4-Autopilot` is mounted from the host, Git operations inside the container affect the host checkout. Keep file ownership consistent to avoid `root`-owned `.git` files.
+- Headless mode (`HEADLESS=1`) skips Gazebo rendering — use it on machines without a GPU.
+- Re-attach to a running container: `docker exec -it <container_name> bash`
