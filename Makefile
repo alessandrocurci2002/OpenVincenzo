@@ -52,6 +52,7 @@ help:
 	@echo "  make setup-px4-host     Initialize/update the PX4-Autopilot submodule"
 	@echo "  make patch-px4-gz-host  Apply PX4 Gazebo model compatibility patches"
 	@echo "  make clean-px4-build-host Remove stale PX4 SITL build cache"
+	@echo "  make repair-px4-submodules-host Repair stale nested PX4 submodule metadata"
 	@echo "  make setup-oak-host     Install Luxonis udev rule on the Raspberry Pi host"
 	@echo "  make check-scripts      Validate shell script syntax"
 	@echo ""
@@ -158,7 +159,7 @@ setup-px4-host:
 	test -n "$$PX4_PATH"; \
 	test -n "$$PX4_BRANCH"; \
 	git submodule sync --recursive "$$PX4_PATH"; \
-	git submodule update --init --recursive "$$PX4_PATH"; \
+	git submodule update --init "$$PX4_PATH"; \
 	git -C "$$PX4_PATH" fetch origin "$$PX4_BRANCH"; \
 	git -C "$$PX4_PATH" checkout "$$PX4_BRANCH"; \
 	git -C "$$PX4_PATH" pull --ff-only origin "$$PX4_BRANCH"; \
@@ -179,6 +180,22 @@ clean-px4-build-host:
 	PX4_PATH="$$(git config -f .gitmodules --get submodule.PX4-Autopilot.path)"; \
 	test -n "$$PX4_PATH"; \
 	$(MAKE) -C "$$PX4_PATH" distclean
+
+.PHONY: repair-px4-submodules-host
+repair-px4-submodules-host:
+	@set -e; \
+	PX4_PATH="$$(git config -f .gitmodules --get submodule.PX4-Autopilot.path)"; \
+	PX4_BRANCH="$$(git config -f .gitmodules --get submodule.PX4-Autopilot.branch)"; \
+	test -n "$$PX4_PATH"; \
+	test -n "$$PX4_BRANCH"; \
+	git submodule sync "$$PX4_PATH"; \
+	git submodule update --init "$$PX4_PATH"; \
+	git -C "$$PX4_PATH" fetch origin "$$PX4_BRANCH"; \
+	git -C "$$PX4_PATH" checkout "$$PX4_BRANCH"; \
+	git -C "$$PX4_PATH" submodule deinit -f --all; \
+	git -C "$$PX4_PATH" submodule sync --recursive; \
+	git -C "$$PX4_PATH" submodule update --init --recursive; \
+	PX4_DIR="$$PX4_PATH" scripts/patch_px4_gz_models.sh
 
 .PHONY: check-scripts
 check-scripts:
