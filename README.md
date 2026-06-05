@@ -93,7 +93,7 @@ Available in any shell inside the container (`/usr/local/bin/`):
 
 | Command                  | Description                                                          |
 |--------------------------|----------------------------------------------------------------------|
-| `run_px4_baylands_H1`    | Starts PX4 SITL — `baylands` world, `gz_x500_depth`, headless       |
+| `run_px4_baylands_H1`    | Starts PX4 SITL — `baylands` world, `gz_x500_depth`, headless; exports the PX4 Gazebo plugin path |
 | `run_image_bridge`       | ROS ↔ Gazebo bridge for IMX214 RGB image                             |
 | `run_image_bridge_left`  | Bridge for left stereo camera image                                  |
 | `run_image_bridge_right` | Bridge for right stereo camera image                                 |

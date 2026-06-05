@@ -127,11 +127,6 @@ RUN apt-get update && \
 
 RUN mkdir -p /root/colcon_ws/src
 
-# ── Shortcut: run_px4_baylands_H1 ────────────────────────────
-RUN printf '#!/bin/bash\nsource /opt/ros/humble/setup.bash\ncd /root/PX4-Autopilot\nHEADLESS=1 PX4_GZ_WORLD=baylands make px4_sitl gz_x500_depth\n' \
-    > /usr/local/bin/run_px4_baylands_H1 && \
-    chmod +x /usr/local/bin/run_px4_baylands_H1
-
 # ── Shortcut: run_image_bridge ───────────────────────────────
 RUN printf '#!/bin/bash\nsource /opt/ros/humble/setup.bash\nros2 run ros_gz_bridge parameter_bridge /world/baylands/model/x500_depth_0/link/camera_link/sensor/IMX214/image@sensor_msgs/msg/Image[gz.msgs.Image\n' \
     > /usr/local/bin/run_image_bridge && \
@@ -192,18 +187,21 @@ COPY entrypoint.sh /entrypoint.sh
 COPY scripts/smoke_no_oak.sh /usr/local/bin/smoke_no_oak
 COPY scripts/smoke_oak.sh /usr/local/bin/smoke_oak
 COPY scripts/run_oak_stereo.sh /usr/local/bin/run_oak_stereo
+COPY scripts/run_px4_baylands_H1.sh /usr/local/bin/run_px4_baylands_H1
 COPY scripts/setup_px4_repo.sh /usr/local/bin/setup_px4_repo
 COPY scripts/setup_px4_deps.sh /usr/local/bin/setup_px4_deps
 RUN sed -i 's/\r$//' /entrypoint.sh \
     /usr/local/bin/smoke_no_oak \
     /usr/local/bin/smoke_oak \
     /usr/local/bin/run_oak_stereo \
+    /usr/local/bin/run_px4_baylands_H1 \
     /usr/local/bin/setup_px4_repo \
     /usr/local/bin/setup_px4_deps && \
     chmod +x /entrypoint.sh \
     /usr/local/bin/smoke_no_oak \
     /usr/local/bin/smoke_oak \
     /usr/local/bin/run_oak_stereo \
+    /usr/local/bin/run_px4_baylands_H1 \
     /usr/local/bin/setup_px4_repo \
     /usr/local/bin/setup_px4_deps
 
