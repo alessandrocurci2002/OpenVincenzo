@@ -39,10 +39,45 @@ optional_pkg() {
   fi
 }
 
+check_px4_gz_patch() {
+  local tmp
+  tmp="$(mktemp -d)"
+  trap "rm -rf -- '${tmp}'" EXIT
+
+  mkdir -p \
+    "${tmp}/Tools/simulation/gz/worlds" \
+    "${tmp}/Tools/simulation/gz/models/x500"
+
+  cat > "${tmp}/Tools/simulation/gz/worlds/baylands.sdf" <<'EOF'
+<sdf version="1.9">
+  <world name="baylands">
+    <pose>0 0 -2 0 0 0
+      <relative_to>park</relative_to>
+    </pose>
+  </world>
+</sdf>
+EOF
+
+  cat > "${tmp}/Tools/simulation/gz/models/x500/model.sdf" <<'EOF'
+<sdf version="1.9">
+  <model name="x500">
+    <plugin filename="MotorFailurePlugin" name="gz::sim::systems::MotorFailureSystem">
+    </plugin>
+  </model>
+</sdf>
+EOF
+
+  PX4_DIR="${tmp}" patch_px4_gz_models
+  PX4_DIR="${tmp}" patch_px4_gz_models --check
+}
+
 check_cmd ros2
 check_cmd rviz2
 check_cmd gz
 check_cmd MicroXRCEAgent
+check_cmd patch_px4_gz_models
+check_cmd run_gz_stereo_bridge
+check_cmd run_1
 
 check_pkg rviz2
 check_pkg ros_gz_bridge
@@ -52,5 +87,7 @@ optional_pkg ov_core
 optional_pkg ov_init
 optional_pkg ov_msckf
 optional_pkg ov_eval
+
+check_px4_gz_patch
 
 echo "smoke_no_oak: OK"

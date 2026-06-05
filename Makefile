@@ -1,3 +1,5 @@
+SHELL := bash
+
 IMAGE ?= openvincenzo:humble
 OAK_IMAGE ?= openvincenzo:humble-oak
 ARM_IMAGE ?= openvincenzo:humble-arm64
@@ -8,8 +10,11 @@ DOCKER ?= docker
 
 RUN_PX4_SETUP ?= 0
 BUILD_OPENVINS ?= 0
+FORCE_BUILD_OPENVINS ?= 0
 ROS_DOMAIN_ID ?= 0
 RUN_ROS_GZ_BRIDGES ?= 0
+GZ_BRIDGE_STREAMS ?= left,right,imu
+GZ_MODEL_NAME ?= x500_depth_0
 
 OAK_LAUNCH_FILE ?= rgbd_pcl.launch.py
 OAK_BOOT_SECONDS ?= 10
@@ -37,6 +42,7 @@ help:
 	@echo ""
 	@echo "Smoke tests:"
 	@echo "  make smoke              Test image without PX4/OpenVINS runtime setup"
+	@echo "  make smoke-bridge       Test stereo bridge command wiring"
 	@echo "  make smoke-oak          Test OAK-D Pro image and live USB camera"
 	@echo ""
 	@echo "Run:"
@@ -58,7 +64,8 @@ help:
 	@echo ""
 	@echo "Useful overrides:"
 	@echo "  make run RUN_PX4_SETUP=0 BUILD_OPENVINS=0"
-	@echo "  make run RUN_ROS_GZ_BRIDGES=1"
+	@echo "  make run-full GZ_BRIDGE_STREAMS=left,right,imu"
+	@echo "  make run RUN_ROS_GZ_BRIDGES=1 GZ_MODEL_NAME=x500_depth_0"
 	@echo "  make build IMAGE=my-image:tag"
 	@echo "  make oak-stereo OAK_LAUNCH_FILE=driver.launch.py"
 
@@ -95,28 +102,31 @@ ensure-oak-image:
 .PHONY: run
 run: ensure-image
 	chmod +x $(RUNNER)
-	ROS_DOMAIN_ID=$(ROS_DOMAIN_ID) RUN_PX4_SETUP=$(RUN_PX4_SETUP) BUILD_OPENVINS=$(BUILD_OPENVINS) RUN_ROS_GZ_BRIDGES=$(RUN_ROS_GZ_BRIDGES) \
+	ROS_DOMAIN_ID=$(ROS_DOMAIN_ID) RUN_PX4_SETUP=$(RUN_PX4_SETUP) BUILD_OPENVINS=$(BUILD_OPENVINS) FORCE_BUILD_OPENVINS=$(FORCE_BUILD_OPENVINS) \
+	RUN_ROS_GZ_BRIDGES=$(RUN_ROS_GZ_BRIDGES) GZ_BRIDGE_STREAMS=$(GZ_BRIDGE_STREAMS) GZ_MODEL_NAME=$(GZ_MODEL_NAME) \
 		$(RUNNER) $(CONTAINER) $(IMAGE)
 
 .PHONY: shell
 shell: ensure-image
 	chmod +x $(RUNNER)
-	ROS_DOMAIN_ID=$(ROS_DOMAIN_ID) RUN_PX4_SETUP=$(RUN_PX4_SETUP) BUILD_OPENVINS=$(BUILD_OPENVINS) RUN_ROS_GZ_BRIDGES=$(RUN_ROS_GZ_BRIDGES) \
+	ROS_DOMAIN_ID=$(ROS_DOMAIN_ID) RUN_PX4_SETUP=$(RUN_PX4_SETUP) BUILD_OPENVINS=$(BUILD_OPENVINS) FORCE_BUILD_OPENVINS=$(FORCE_BUILD_OPENVINS) \
+	RUN_ROS_GZ_BRIDGES=$(RUN_ROS_GZ_BRIDGES) GZ_BRIDGE_STREAMS=$(GZ_BRIDGE_STREAMS) GZ_MODEL_NAME=$(GZ_MODEL_NAME) \
 		$(RUNNER) $(CONTAINER) $(IMAGE) bash
 
 .PHONY: rviz
 rviz: ensure-image
 	chmod +x $(RUNNER)
-	ROS_DOMAIN_ID=$(ROS_DOMAIN_ID) RUN_PX4_SETUP=$(RUN_PX4_SETUP) BUILD_OPENVINS=$(BUILD_OPENVINS) RUN_ROS_GZ_BRIDGES=$(RUN_ROS_GZ_BRIDGES) \
+	ROS_DOMAIN_ID=$(ROS_DOMAIN_ID) RUN_PX4_SETUP=$(RUN_PX4_SETUP) BUILD_OPENVINS=$(BUILD_OPENVINS) FORCE_BUILD_OPENVINS=$(FORCE_BUILD_OPENVINS) \
+	RUN_ROS_GZ_BRIDGES=$(RUN_ROS_GZ_BRIDGES) GZ_BRIDGE_STREAMS=$(GZ_BRIDGE_STREAMS) GZ_MODEL_NAME=$(GZ_MODEL_NAME) \
 		$(RUNNER) $(CONTAINER) $(IMAGE) rviz2
 
 .PHONY: run-full
-run-full:
-	$(MAKE) run RUN_PX4_SETUP=1 BUILD_OPENVINS=1
+run-full: ensure-px4-branch
+	$(MAKE) run RUN_PX4_SETUP=1 BUILD_OPENVINS=1 RUN_ROS_GZ_BRIDGES=1
 
 .PHONY: shell-full
-shell-full:
-	$(MAKE) shell RUN_PX4_SETUP=1 BUILD_OPENVINS=1
+shell-full: ensure-px4-branch
+	$(MAKE) shell RUN_PX4_SETUP=1 BUILD_OPENVINS=1 RUN_ROS_GZ_BRIDGES=1
 
 .PHONY: smoke
 smoke: ensure-image
@@ -124,10 +134,17 @@ smoke: ensure-image
 	RUN_PX4_SETUP=0 BUILD_OPENVINS=0 \
 		$(RUNNER) $(SMOKE_CONTAINER) $(IMAGE) smoke_no_oak
 
+.PHONY: smoke-bridge
+smoke-bridge: ensure-image
+	chmod +x $(RUNNER)
+	RUN_PX4_SETUP=0 BUILD_OPENVINS=0 \
+		$(RUNNER) $(SMOKE_CONTAINER) $(IMAGE) bash -lc 'command -v run_gz_stereo_bridge && bash -n /usr/local/bin/run_gz_stereo_bridge && command -v run_1 && bash -n /usr/local/bin/run_1'
+
 .PHONY: oak-stereo
 oak-stereo: ensure-oak-image
 	chmod +x $(OAK_RUNNER)
-	ROS_DOMAIN_ID=$(ROS_DOMAIN_ID) RUN_PX4_SETUP=$(RUN_PX4_SETUP) BUILD_OPENVINS=$(BUILD_OPENVINS) RUN_ROS_GZ_BRIDGES=$(RUN_ROS_GZ_BRIDGES) OAK_LAUNCH_FILE=$(OAK_LAUNCH_FILE) \
+	ROS_DOMAIN_ID=$(ROS_DOMAIN_ID) RUN_PX4_SETUP=$(RUN_PX4_SETUP) BUILD_OPENVINS=$(BUILD_OPENVINS) FORCE_BUILD_OPENVINS=$(FORCE_BUILD_OPENVINS) \
+	RUN_ROS_GZ_BRIDGES=$(RUN_ROS_GZ_BRIDGES) GZ_BRIDGE_STREAMS=$(GZ_BRIDGE_STREAMS) GZ_MODEL_NAME=$(GZ_MODEL_NAME) OAK_LAUNCH_FILE=$(OAK_LAUNCH_FILE) \
 		$(OAK_RUNNER) $(OAK_CONTAINER) $(OAK_IMAGE) run_oak_stereo
 
 .PHONY: run-oak
@@ -136,7 +153,8 @@ run-oak: oak-stereo
 .PHONY: oak-shell
 oak-shell: ensure-oak-image
 	chmod +x $(OAK_RUNNER)
-	ROS_DOMAIN_ID=$(ROS_DOMAIN_ID) RUN_PX4_SETUP=$(RUN_PX4_SETUP) BUILD_OPENVINS=$(BUILD_OPENVINS) RUN_ROS_GZ_BRIDGES=$(RUN_ROS_GZ_BRIDGES) \
+	ROS_DOMAIN_ID=$(ROS_DOMAIN_ID) RUN_PX4_SETUP=$(RUN_PX4_SETUP) BUILD_OPENVINS=$(BUILD_OPENVINS) FORCE_BUILD_OPENVINS=$(FORCE_BUILD_OPENVINS) \
+	RUN_ROS_GZ_BRIDGES=$(RUN_ROS_GZ_BRIDGES) GZ_BRIDGE_STREAMS=$(GZ_BRIDGE_STREAMS) GZ_MODEL_NAME=$(GZ_MODEL_NAME) \
 		$(OAK_RUNNER) $(OAK_CONTAINER) $(OAK_IMAGE) bash
 
 .PHONY: smoke-oak
@@ -150,6 +168,24 @@ setup-oak-host:
 	echo 'SUBSYSTEM=="usb", ATTRS{idVendor}=="03e7", MODE="0666"' | sudo tee /etc/udev/rules.d/80-movidius.rules
 	sudo udevadm control --reload-rules
 	sudo udevadm trigger
+
+.PHONY: ensure-px4-branch
+ensure-px4-branch:
+	@set -e; \
+	PX4_PATH="$$(git config -f .gitmodules --get submodule.PX4-Autopilot.path)"; \
+	PX4_BRANCH="$$(git config -f .gitmodules --get submodule.PX4-Autopilot.branch)"; \
+	test -n "$$PX4_PATH"; \
+	test -n "$$PX4_BRANCH"; \
+	if [[ ! -d "$$PX4_PATH" ]]; then \
+		echo "$$PX4_PATH is missing. Run: make setup-px4-host" >&2; \
+		exit 1; \
+	fi; \
+	CURRENT_BRANCH="$$(git -C "$$PX4_PATH" branch --show-current 2>/dev/null || true)"; \
+	if [[ "$$CURRENT_BRANCH" != "$$PX4_BRANCH" ]]; then \
+		echo "$$PX4_PATH is on '$$CURRENT_BRANCH', expected '$$PX4_BRANCH' from .gitmodules." >&2; \
+		echo "Run: make setup-px4-host" >&2; \
+		exit 1; \
+	fi
 
 .PHONY: setup-px4-host
 setup-px4-host:
@@ -199,7 +235,7 @@ repair-px4-submodules-host:
 
 .PHONY: check-scripts
 check-scripts:
-	for f in entrypoint.sh dockerRun.sh dockerRun_oak.sh scripts/smoke_no_oak.sh scripts/smoke_oak.sh scripts/run_oak_stereo.sh scripts/patch_px4_gz_models.sh scripts/run_px4_baylands_H1.sh scripts/setup_px4_repo.sh scripts/setup_px4_deps.sh; do \
+	for f in entrypoint.sh dockerRun.sh dockerRun_oak.sh scripts/smoke_no_oak.sh scripts/smoke_oak.sh scripts/run_oak_stereo.sh scripts/patch_px4_gz_models.sh scripts/run_gz_stereo_bridge.sh scripts/run_1.sh scripts/run_px4_baylands_H1.sh scripts/setup_px4_repo.sh scripts/setup_px4_deps.sh; do \
 		bash -n "$$f"; \
 	done
 

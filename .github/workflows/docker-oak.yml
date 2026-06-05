@@ -6,8 +6,10 @@ on:
     branches:
       - main
       - master
+      - dev/AArch64
     paths:
       - Dockerfile
+      - Makefile
       - entrypoint.sh
       - scripts/**
       - dockerRun_oak.sh
@@ -22,6 +24,7 @@ on:
       - v*
     paths:
       - Dockerfile
+      - Makefile
       - entrypoint.sh
       - scripts/**
       - dockerRun_oak.sh
@@ -73,6 +76,37 @@ jobs:
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
+
+      - name: Validate shell scripts
+        run: make check-scripts
+
+      - name: Build amd64 smoke image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ./Dockerfile
+          target: ${{ env.DOCKER_TARGET }}
+          platforms: linux/amd64
+          load: true
+          tags: openvincenzo-ci:oak-amd64
+          cache-from: type=gha,scope=oak
+
+      - name: Run amd64 smoke test
+        run: docker run --rm -e RUN_PX4_SETUP=0 -e BUILD_OPENVINS=0 openvincenzo-ci:oak-amd64 bash -lc 'smoke_no_oak && source /opt/ros/humble/setup.bash && ros2 pkg prefix depthai_ros_driver_v3'
+
+      - name: Build arm64 smoke image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ./Dockerfile
+          target: ${{ env.DOCKER_TARGET }}
+          platforms: linux/arm64
+          load: true
+          tags: openvincenzo-ci:oak-arm64
+          cache-from: type=gha,scope=oak
+
+      - name: Run arm64 smoke test
+        run: docker run --rm --platform linux/arm64 -e RUN_PX4_SETUP=0 -e BUILD_OPENVINS=0 openvincenzo-ci:oak-arm64 bash -lc 'smoke_no_oak && source /opt/ros/humble/setup.bash && ros2 pkg prefix depthai_ros_driver_v3'
 
       - name: Login to GHCR
         if: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push_image) }}

@@ -71,13 +71,13 @@ cd ..
 
 **GStreamer** — full plugin set (`good`, `bad`, `ugly`, `libav`) for camera stream handling.
 
-**Gazebo Harmonic** — installed from the OSRF repository. Includes `ros-humble-ros-gz-bridge` for ROS 2 ↔ Gazebo bridging.
+**Gazebo Harmonic** — installed from the OSRF repository. Includes `ros-humble-ros-gz-bridge` for the dedicated stereo/IMU bridge wrappers.
 
 **Ceres Solver** — installed via `apt` (`libceres-dev`, `libgoogle-glog-dev`, `libsuitesparse-dev`, `libopenblas-dev`).
 
 **Micro-XRCE-DDS-Agent v2.4.3** — built from source. Acts as the DDS agent between the PX4 uXRCE-DDS client and ROS 2.
 
-**OpenVINS** — mounted from the host into `/root/colcon_ws/src/open_vins`. Built at container startup with `colcon` (packages: `ov_core`, `ov_init`, `ov_msckf`, `ov_eval`) unless `BUILD_OPENVINS=0`.
+**OpenVINS** — mounted from the host into `/root/colcon_ws/src/open_vins`. Built at container startup with `colcon` (packages: `ov_core`, `ov_init`, `ov_msckf`, `ov_eval`) unless `BUILD_OPENVINS=0`. The build, install, and log directories are persisted in Docker volumes.
 
 **PX4-Autopilot** — mounted from the host at `/root/PX4-Autopilot`. PX4 Ubuntu dependencies (`Tools/setup/ubuntu.sh --no-nuttx`) are installed at container startup, not at image build time.
 
@@ -94,11 +94,12 @@ Available in any shell inside the container (`/usr/local/bin/`):
 | Command                  | Description                                                          |
 |--------------------------|----------------------------------------------------------------------|
 | `run_px4_baylands_H1`    | Starts PX4 SITL — `baylands` world, `gz_x500_depth`, headless; exports the PX4 Gazebo plugin path |
-| `run_image_bridge`       | ROS ↔ Gazebo bridge for IMX214 RGB image                             |
-| `run_image_bridge_left`  | Bridge for left stereo camera image                                  |
-| `run_image_bridge_right` | Bridge for right stereo camera image                                 |
-| `run_pointcloud_bridge`  | Bridge for depth pointcloud, depth image, and camera info            |
-| `run_1`                  | Starts all bridges in background, then PX4 in foreground             |
+| `run_gz_stereo_bridge`   | Waits for real Gazebo topics, then bridges left/right stereo images and IMU to ROS |
+| `run_image_bridge`       | Convenience wrapper for the IMX214 RGB image bridge                  |
+| `run_image_bridge_left`  | Convenience wrapper for the left stereo camera image bridge          |
+| `run_image_bridge_right` | Convenience wrapper for the right stereo camera image bridge         |
+| `run_pointcloud_bridge`  | Disabled for the OpenVINS stereo flow; use `run_gz_stereo_bridge`    |
+| `run_1`                  | Starts the optional stereo/IMU bridge, then PX4 `gz_x500_depth` in the `baylands` world |
 | `setup_px4_repo`         | Clones/updates the mounted PX4 fork recursively in `/root/PX4-Autopilot` |
 | `setup_px4_deps`         | Runs PX4 `Tools/setup/ubuntu.sh --no-nuttx` inside the container; skips unavailable multilib packages on arm64 |
 
@@ -180,8 +181,10 @@ Common overrides:
 ```bash
 make run RUN_PX4_SETUP=0 BUILD_OPENVINS=0
 make run-full
+make run-full GZ_BRIDGE_STREAMS=left,right,imu
 make shell-full
 make build IMAGE=my-openvincenzo:dev
+make smoke-bridge
 make oak-stereo OAK_LAUNCH_FILE=driver.launch.py
 ```
 
@@ -189,7 +192,7 @@ The Makefile sets `BUILDX_GIT_INFO=0` for Docker builds to avoid Buildx warnings
 
 ### CI/CD
 
-GitHub Actions builds one Docker workflow per public image target:
+GitHub Actions builds one Docker workflow per public image target and runs image smoke checks for both amd64 and arm64:
 
 - `Docker production`: builds `--target production`
 - `Docker OAK-D Pro`: builds `--target oak`
@@ -243,7 +246,7 @@ Runtime setup can be controlled with environment variables:
 RUN_PX4_SETUP=0 BUILD_OPENVINS=0 ./dockerRun.sh ov-test openvincenzo:humble smoke_no_oak
 ```
 
-Use `RUN_PX4_SETUP=0` after PX4 dependencies are already present in the image/container layer or when running image-only smoke tests. Use `BUILD_OPENVINS=0` to skip rebuilding the mounted OpenVINS workspace.
+Use `RUN_PX4_SETUP=0` after PX4 dependencies are already present in the image/container layer or when running image-only smoke tests. Use `BUILD_OPENVINS=0` to skip rebuilding the mounted OpenVINS workspace. Use `FORCE_BUILD_OPENVINS=1` when the persisted OpenVINS install volume must be rebuilt from source.
 
 ### Smoke Test Without OAK-D Pro
 
@@ -292,8 +295,10 @@ OAK_LAUNCH_FILE=driver.launch.py ./dockerRun_oak.sh ov-oak openvincenzo:humble-o
 ## Full launch (headless)
 
 ```bash
-run_1
+RUN_ROS_GZ_BRIDGES=1 run_1
 ```
+
+`make run-full` already sets `RUN_ROS_GZ_BRIDGES=1`.
 
 ### Step-by-step
 
@@ -301,11 +306,8 @@ run_1
 # PX4 SITL
 run_px4_baylands_H1
 
-# Bridges (each in a separate tmux pane)
-run_image_bridge
-run_image_bridge_left
-run_image_bridge_right
-run_pointcloud_bridge
+# Stereo images + IMU bridge in a separate tmux pane
+run_gz_stereo_bridge
 ```
 
 ## DDS Agent
@@ -363,6 +365,10 @@ ros2 run ov_eval plot_consistency \
 | `ROS_DOMAIN_ID`    | `0`                  |
 | `RUN_PX4_SETUP`    | `1` by default in `entrypoint.sh`; Makefile defaults to `0` |
 | `BUILD_OPENVINS`   | `1` by default in `entrypoint.sh`; Makefile defaults to `0` |
+| `FORCE_BUILD_OPENVINS` | `0`; set to `1` to rebuild the persisted OpenVINS workspace |
+| `RUN_ROS_GZ_BRIDGES` | `0`; `make run-full` sets it to `1` |
+| `GZ_BRIDGE_STREAMS` | `left,right,imu` by default |
+| `GZ_MODEL_NAME`    | `x500_depth_0` by default |
 
 ***
 
@@ -371,5 +377,7 @@ ros2 run ov_eval plot_consistency \
 - `--net=host` and `--privileged` are required for PX4 ↔ ROS 2 DDS communication.
 - `dockerRun_oak.sh` also maps `/dev/bus/usb` and `/run/udev` so DepthAI can access the OAK-D Pro.
 - Since `PX4-Autopilot` is mounted from the host, Git operations inside the container affect the host checkout. Keep file ownership consistent to avoid `root`-owned `.git` files.
+- The PX4 Gazebo patch is applied by `make setup-px4-host` / `make patch-px4-gz-host`, not by the container entrypoint.
+- `dockerRun.sh` and `dockerRun_oak.sh` persist `/root/colcon_ws/build`, `/root/colcon_ws/install`, and `/root/colcon_ws/log` in Docker volumes.
 - Headless mode (`HEADLESS=1`) skips Gazebo rendering — use it on machines without a GPU.
 - Re-attach to a running container: `docker exec -it <container_name> bash`

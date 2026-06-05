@@ -127,35 +127,26 @@ RUN apt-get update && \
 
 RUN mkdir -p /root/colcon_ws/src
 
-# ── Shortcut: run_image_bridge ───────────────────────────────
-RUN printf '#!/bin/bash\nsource /opt/ros/humble/setup.bash\nros2 run ros_gz_bridge parameter_bridge /world/baylands/model/x500_depth_0/link/camera_link/sensor/IMX214/image@sensor_msgs/msg/Image[gz.msgs.Image\n' \
+# ── Shortcut bridge wrappers ─────────────────────────────────
+RUN printf '#!/bin/bash\nGZ_BRIDGE_STREAMS=rgb exec run_gz_stereo_bridge "$@"\n' \
     > /usr/local/bin/run_image_bridge && \
     chmod +x /usr/local/bin/run_image_bridge
 
-# ── Shortcut: run_image_bridge_left ───────────────────────────
-RUN printf '#!/bin/bash\nsource /opt/ros/humble/setup.bash\nros2 run ros_gz_bridge parameter_bridge /world/baylands/model/x500_depth_0/link/camera_link/sensor/left_camera/image@sensor_msgs/msg/Image[gz.msgs.Image\n' \
+RUN printf '#!/bin/bash\nGZ_BRIDGE_STREAMS=left exec run_gz_stereo_bridge "$@"\n' \
     > /usr/local/bin/run_image_bridge_left && \
     chmod +x /usr/local/bin/run_image_bridge_left
 
-# ── Shortcut: run_image_bridge_right ──────────────────────────
-RUN printf '#!/bin/bash\nsource /opt/ros/humble/setup.bash\nros2 run ros_gz_bridge parameter_bridge /world/baylands/model/x500_depth_0/link/camera_link/sensor/right_camera/image@sensor_msgs/msg/Image[gz.msgs.Image\n' \
+RUN printf '#!/bin/bash\nGZ_BRIDGE_STREAMS=right exec run_gz_stereo_bridge "$@"\n' \
     > /usr/local/bin/run_image_bridge_right && \
     chmod +x /usr/local/bin/run_image_bridge_right
 
-# ── Shortcut: run_pointcloud_bridge ──────────────────────────
-RUN printf '#!/bin/bash\nsource /opt/ros/humble/setup.bash\nros2 run ros_gz_bridge parameter_bridge \\\n  /depth_camera/points@sensor_msgs/msg/PointCloud2[gz.msgs.PointCloudPacked \\\n  /depth_camera@sensor_msgs/msg/Image[gz.msgs.Image \\\n  /camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo\n' \
+RUN printf '#!/bin/bash\necho "Pointcloud bridge is intentionally not enabled for OpenVINS stereo. Use run_gz_stereo_bridge for left/right/IMU topics." >&2\nexit 1\n' \
     > /usr/local/bin/run_pointcloud_bridge && \
     chmod +x /usr/local/bin/run_pointcloud_bridge
 
-    # ── Shortcut: run_imu_bridge ──────────────────────────
-RUN printf '#!/bin/bash\nsource /opt/ros/humble/setup.bash\nros2 run ros_gz_bridge parameter_bridge \\\n  /world/baylands/model/x500_depth_0/link/base_link/sensor/imu_sensor/imu@sensor_msgs/msg/Imu[gz.msgs.IMU\n' \
+RUN printf '#!/bin/bash\nGZ_BRIDGE_STREAMS=imu exec run_gz_stereo_bridge "$@"\n' \
     > /usr/local/bin/run_imu_bridge && \
     chmod +x /usr/local/bin/run_imu_bridge
-
-# ── Shortcut: run_1 (PX4; bridge opzionali) ──────────────────
-RUN printf '#!/bin/bash\nsource /opt/ros/humble/setup.bash\nif [[ "${RUN_ROS_GZ_BRIDGES:-0}" == "1" ]]; then\n  run_image_bridge &\n  run_pointcloud_bridge &\n  run_image_bridge_left &\n  run_image_bridge_right &\n  run_imu_bridge &\nelse\n  echo "ROS-Gazebo image bridges skipped; set RUN_ROS_GZ_BRIDGES=1 to enable them."\nfi\nrun_px4_baylands_H1\n' \
-    > /usr/local/bin/run_1 && \
-    chmod +x /usr/local/bin/run_1
 
 # ── CLion remote debug via SSH ───────────────────────────────
 # https://blog.jetbrains.com/clion/2020/01/using-docker-with-clion/
@@ -188,6 +179,8 @@ COPY scripts/smoke_no_oak.sh /usr/local/bin/smoke_no_oak
 COPY scripts/smoke_oak.sh /usr/local/bin/smoke_oak
 COPY scripts/run_oak_stereo.sh /usr/local/bin/run_oak_stereo
 COPY scripts/patch_px4_gz_models.sh /usr/local/bin/patch_px4_gz_models
+COPY scripts/run_gz_stereo_bridge.sh /usr/local/bin/run_gz_stereo_bridge
+COPY scripts/run_1.sh /usr/local/bin/run_1
 COPY scripts/run_px4_baylands_H1.sh /usr/local/bin/run_px4_baylands_H1
 COPY scripts/setup_px4_repo.sh /usr/local/bin/setup_px4_repo
 COPY scripts/setup_px4_deps.sh /usr/local/bin/setup_px4_deps
@@ -196,6 +189,8 @@ RUN sed -i 's/\r$//' /entrypoint.sh \
     /usr/local/bin/smoke_oak \
     /usr/local/bin/run_oak_stereo \
     /usr/local/bin/patch_px4_gz_models \
+    /usr/local/bin/run_gz_stereo_bridge \
+    /usr/local/bin/run_1 \
     /usr/local/bin/run_px4_baylands_H1 \
     /usr/local/bin/setup_px4_repo \
     /usr/local/bin/setup_px4_deps && \
@@ -204,6 +199,8 @@ RUN sed -i 's/\r$//' /entrypoint.sh \
     /usr/local/bin/smoke_oak \
     /usr/local/bin/run_oak_stereo \
     /usr/local/bin/patch_px4_gz_models \
+    /usr/local/bin/run_gz_stereo_bridge \
+    /usr/local/bin/run_1 \
     /usr/local/bin/run_px4_baylands_H1 \
     /usr/local/bin/setup_px4_repo \
     /usr/local/bin/setup_px4_deps

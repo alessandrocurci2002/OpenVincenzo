@@ -40,7 +40,10 @@ if [[ ! -f "${PX4_DIR}/Makefile" ]]; then
   exit 1
 fi
 
-patch_px4_gz_models
+patch_px4_gz_models --check || {
+  echo "PX4 Gazebo model patches are missing. Run on the host: make patch-px4-gz-host" >&2
+  exit 1
+}
 
 px4_build_dir="${PX4_DIR}/build/px4_sitl_default"
 px4_gz_env="${px4_build_dir}/rootfs/gz_env.sh"
