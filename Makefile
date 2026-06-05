@@ -51,6 +51,7 @@ help:
 	@echo "Host setup:"
 	@echo "  make setup-px4-host     Initialize/update the PX4-Autopilot submodule"
 	@echo "  make patch-px4-gz-host  Apply PX4 Gazebo model compatibility patches"
+	@echo "  make clean-px4-build-host Remove stale PX4 SITL build cache"
 	@echo "  make setup-oak-host     Install Luxonis udev rule on the Raspberry Pi host"
 	@echo "  make check-scripts      Validate shell script syntax"
 	@echo ""
@@ -171,6 +172,13 @@ patch-px4-gz-host:
 	PX4_PATH="$$(git config -f .gitmodules --get submodule.PX4-Autopilot.path)"; \
 	test -n "$$PX4_PATH"; \
 	PX4_DIR="$$PX4_PATH" scripts/patch_px4_gz_models.sh
+
+.PHONY: clean-px4-build-host
+clean-px4-build-host:
+	@set -e; \
+	PX4_PATH="$$(git config -f .gitmodules --get submodule.PX4-Autopilot.path)"; \
+	test -n "$$PX4_PATH"; \
+	$(MAKE) -C "$$PX4_PATH" distclean
 
 .PHONY: check-scripts
 check-scripts:
