@@ -19,8 +19,7 @@ fi
 
 if [[ "${RUN_PX4_SETUP:-1}" == "1" ]]; then
     if [[ -f /root/PX4-Autopilot/Tools/setup/ubuntu.sh ]]; then
-        cd /root/PX4-Autopilot
-        bash ./Tools/setup/ubuntu.sh --no-nuttx
+        setup_px4_deps
         echo "PX4-Autopilot setup complete"
     else
         echo "PX4 setup skipped: /root/PX4-Autopilot is not mounted"

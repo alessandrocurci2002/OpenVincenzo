@@ -100,7 +100,7 @@ Available in any shell inside the container (`/usr/local/bin/`):
 | `run_pointcloud_bridge`  | Bridge for depth pointcloud, depth image, and camera info            |
 | `run_1`                  | Starts all bridges in background, then PX4 in foreground             |
 | `setup_px4_repo`         | Clones/updates the mounted PX4 fork recursively in `/root/PX4-Autopilot` |
-| `setup_px4_deps`         | Runs PX4 `Tools/setup/ubuntu.sh --no-nuttx` inside the container     |
+| `setup_px4_deps`         | Runs PX4 `Tools/setup/ubuntu.sh --no-nuttx` inside the container; skips unavailable multilib packages on arm64 |
 
 PX4 should normally be initialized on the host, because `/root/PX4-Autopilot` is a bind mount:
 
