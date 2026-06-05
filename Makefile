@@ -152,7 +152,7 @@ setup-px4-host:
 
 .PHONY: check-scripts
 check-scripts:
-	for f in entrypoint.sh dockerRun.sh dockerRun_oak.sh scripts/smoke_no_oak.sh scripts/smoke_oak.sh scripts/run_oak_stereo.sh; do \
+	for f in entrypoint.sh dockerRun.sh dockerRun_oak.sh scripts/smoke_no_oak.sh scripts/smoke_oak.sh scripts/run_oak_stereo.sh scripts/run_px4_baylands_H1.sh scripts/setup_px4_repo.sh scripts/setup_px4_deps.sh; do \
 		bash -n "$$f"; \
 	done
 
