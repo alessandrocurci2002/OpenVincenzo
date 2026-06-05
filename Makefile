@@ -148,7 +148,18 @@ setup-oak-host:
 
 .PHONY: setup-px4-host
 setup-px4-host:
-	git submodule update --init --recursive PX4-Autopilot
+	@set -e; \
+	PX4_PATH="$$(git config -f .gitmodules --get submodule.PX4-Autopilot.path)"; \
+	PX4_BRANCH="$$(git config -f .gitmodules --get submodule.PX4-Autopilot.branch)"; \
+	test -n "$$PX4_PATH"; \
+	test -n "$$PX4_BRANCH"; \
+	git submodule sync --recursive "$$PX4_PATH"; \
+	git submodule update --init --recursive "$$PX4_PATH"; \
+	git -C "$$PX4_PATH" fetch origin "$$PX4_BRANCH"; \
+	git -C "$$PX4_PATH" checkout "$$PX4_BRANCH"; \
+	git -C "$$PX4_PATH" pull --ff-only origin "$$PX4_BRANCH"; \
+	git -C "$$PX4_PATH" submodule sync --recursive; \
+	git -C "$$PX4_PATH" submodule update --init --recursive
 
 .PHONY: check-scripts
 check-scripts:

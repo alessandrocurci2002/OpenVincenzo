@@ -40,6 +40,7 @@ DOCKER_ARGS=(
   --env="OAK_LAUNCH_FILE=${OAK_LAUNCH_FILE:-}"
   --env="OAK_BOOT_SECONDS=${OAK_BOOT_SECONDS:-10}"
   --volume="$XAUTH:$XAUTH:rw"
+  --volume="$(pwd)/.git:/root/.git:ro"
   --volume="$(pwd)/PX4-Autopilot:/root/PX4-Autopilot"
   --volume="$(pwd)/colcon_ws/src/open_vins:/root/colcon_ws/src/open_vins"
   --volume="/dev/bus/usb:/dev/bus/usb"

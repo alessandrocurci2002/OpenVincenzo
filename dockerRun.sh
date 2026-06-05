@@ -38,6 +38,7 @@ DOCKER_ARGS=(
   --env="RUN_PX4_SETUP=${RUN_PX4_SETUP:-1}"
   --env="BUILD_OPENVINS=${BUILD_OPENVINS:-1}"
   --volume="$XAUTH:$XAUTH:rw"
+  --volume="$(pwd)/.git:/root/.git:ro"
   --volume="$(pwd)/PX4-Autopilot:/root/PX4-Autopilot"
   --volume="$(pwd)/colcon_ws/src/open_vins:/root/colcon_ws/src/open_vins"
   --net=host
