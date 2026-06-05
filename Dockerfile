@@ -152,8 +152,8 @@ RUN printf '#!/bin/bash\nsource /opt/ros/humble/setup.bash\nros2 run ros_gz_brid
     > /usr/local/bin/run_imu_bridge && \
     chmod +x /usr/local/bin/run_imu_bridge
 
-# ── Shortcut: run_1 (tutti i bridge + PX4) ───────────────────
-RUN printf '#!/bin/bash\nsource /opt/ros/humble/setup.bash\nrun_image_bridge &\nrun_pointcloud_bridge &\nrun_image_bridge_left &\nrun_image_bridge_right &\nrun_imu_bridge &\nrun_px4_baylands_H1\n' \
+# ── Shortcut: run_1 (PX4; bridge opzionali) ──────────────────
+RUN printf '#!/bin/bash\nsource /opt/ros/humble/setup.bash\nif [[ "${RUN_ROS_GZ_BRIDGES:-0}" == "1" ]]; then\n  run_image_bridge &\n  run_pointcloud_bridge &\n  run_image_bridge_left &\n  run_image_bridge_right &\n  run_imu_bridge &\nelse\n  echo "ROS-Gazebo image bridges skipped; set RUN_ROS_GZ_BRIDGES=1 to enable them."\nfi\nrun_px4_baylands_H1\n' \
     > /usr/local/bin/run_1 && \
     chmod +x /usr/local/bin/run_1
 
@@ -187,6 +187,7 @@ COPY entrypoint.sh /entrypoint.sh
 COPY scripts/smoke_no_oak.sh /usr/local/bin/smoke_no_oak
 COPY scripts/smoke_oak.sh /usr/local/bin/smoke_oak
 COPY scripts/run_oak_stereo.sh /usr/local/bin/run_oak_stereo
+COPY scripts/patch_px4_gz_models.sh /usr/local/bin/patch_px4_gz_models
 COPY scripts/run_px4_baylands_H1.sh /usr/local/bin/run_px4_baylands_H1
 COPY scripts/setup_px4_repo.sh /usr/local/bin/setup_px4_repo
 COPY scripts/setup_px4_deps.sh /usr/local/bin/setup_px4_deps
@@ -194,6 +195,7 @@ RUN sed -i 's/\r$//' /entrypoint.sh \
     /usr/local/bin/smoke_no_oak \
     /usr/local/bin/smoke_oak \
     /usr/local/bin/run_oak_stereo \
+    /usr/local/bin/patch_px4_gz_models \
     /usr/local/bin/run_px4_baylands_H1 \
     /usr/local/bin/setup_px4_repo \
     /usr/local/bin/setup_px4_deps && \
@@ -201,6 +203,7 @@ RUN sed -i 's/\r$//' /entrypoint.sh \
     /usr/local/bin/smoke_no_oak \
     /usr/local/bin/smoke_oak \
     /usr/local/bin/run_oak_stereo \
+    /usr/local/bin/patch_px4_gz_models \
     /usr/local/bin/run_px4_baylands_H1 \
     /usr/local/bin/setup_px4_repo \
     /usr/local/bin/setup_px4_deps

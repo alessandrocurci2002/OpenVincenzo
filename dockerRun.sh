@@ -37,6 +37,7 @@ DOCKER_ARGS=(
   --env="ROS_DOMAIN_ID=${ROS_DOMAIN_ID:-0}"
   --env="RUN_PX4_SETUP=${RUN_PX4_SETUP:-1}"
   --env="BUILD_OPENVINS=${BUILD_OPENVINS:-1}"
+  --env="RUN_ROS_GZ_BRIDGES=${RUN_ROS_GZ_BRIDGES:-0}"
   --volume="$XAUTH:$XAUTH:rw"
   --volume="$(pwd)/.git:/root/.git:ro"
   --volume="$(pwd)/PX4-Autopilot:/root/PX4-Autopilot"

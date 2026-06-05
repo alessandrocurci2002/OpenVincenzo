@@ -9,6 +9,7 @@ DOCKER ?= docker
 RUN_PX4_SETUP ?= 0
 BUILD_OPENVINS ?= 0
 ROS_DOMAIN_ID ?= 0
+RUN_ROS_GZ_BRIDGES ?= 0
 
 OAK_LAUNCH_FILE ?= rgbd_pcl.launch.py
 OAK_BOOT_SECONDS ?= 10
@@ -49,11 +50,13 @@ help:
 	@echo ""
 	@echo "Host setup:"
 	@echo "  make setup-px4-host     Initialize/update the PX4-Autopilot submodule"
+	@echo "  make patch-px4-gz-host  Apply PX4 Gazebo model compatibility patches"
 	@echo "  make setup-oak-host     Install Luxonis udev rule on the Raspberry Pi host"
 	@echo "  make check-scripts      Validate shell script syntax"
 	@echo ""
 	@echo "Useful overrides:"
 	@echo "  make run RUN_PX4_SETUP=0 BUILD_OPENVINS=0"
+	@echo "  make run RUN_ROS_GZ_BRIDGES=1"
 	@echo "  make build IMAGE=my-image:tag"
 	@echo "  make oak-stereo OAK_LAUNCH_FILE=driver.launch.py"
 
@@ -90,19 +93,19 @@ ensure-oak-image:
 .PHONY: run
 run: ensure-image
 	chmod +x $(RUNNER)
-	ROS_DOMAIN_ID=$(ROS_DOMAIN_ID) RUN_PX4_SETUP=$(RUN_PX4_SETUP) BUILD_OPENVINS=$(BUILD_OPENVINS) \
+	ROS_DOMAIN_ID=$(ROS_DOMAIN_ID) RUN_PX4_SETUP=$(RUN_PX4_SETUP) BUILD_OPENVINS=$(BUILD_OPENVINS) RUN_ROS_GZ_BRIDGES=$(RUN_ROS_GZ_BRIDGES) \
 		$(RUNNER) $(CONTAINER) $(IMAGE)
 
 .PHONY: shell
 shell: ensure-image
 	chmod +x $(RUNNER)
-	ROS_DOMAIN_ID=$(ROS_DOMAIN_ID) RUN_PX4_SETUP=$(RUN_PX4_SETUP) BUILD_OPENVINS=$(BUILD_OPENVINS) \
+	ROS_DOMAIN_ID=$(ROS_DOMAIN_ID) RUN_PX4_SETUP=$(RUN_PX4_SETUP) BUILD_OPENVINS=$(BUILD_OPENVINS) RUN_ROS_GZ_BRIDGES=$(RUN_ROS_GZ_BRIDGES) \
 		$(RUNNER) $(CONTAINER) $(IMAGE) bash
 
 .PHONY: rviz
 rviz: ensure-image
 	chmod +x $(RUNNER)
-	ROS_DOMAIN_ID=$(ROS_DOMAIN_ID) RUN_PX4_SETUP=$(RUN_PX4_SETUP) BUILD_OPENVINS=$(BUILD_OPENVINS) \
+	ROS_DOMAIN_ID=$(ROS_DOMAIN_ID) RUN_PX4_SETUP=$(RUN_PX4_SETUP) BUILD_OPENVINS=$(BUILD_OPENVINS) RUN_ROS_GZ_BRIDGES=$(RUN_ROS_GZ_BRIDGES) \
 		$(RUNNER) $(CONTAINER) $(IMAGE) rviz2
 
 .PHONY: run-full
@@ -122,7 +125,7 @@ smoke: ensure-image
 .PHONY: oak-stereo
 oak-stereo: ensure-oak-image
 	chmod +x $(OAK_RUNNER)
-	ROS_DOMAIN_ID=$(ROS_DOMAIN_ID) RUN_PX4_SETUP=$(RUN_PX4_SETUP) BUILD_OPENVINS=$(BUILD_OPENVINS) OAK_LAUNCH_FILE=$(OAK_LAUNCH_FILE) \
+	ROS_DOMAIN_ID=$(ROS_DOMAIN_ID) RUN_PX4_SETUP=$(RUN_PX4_SETUP) BUILD_OPENVINS=$(BUILD_OPENVINS) RUN_ROS_GZ_BRIDGES=$(RUN_ROS_GZ_BRIDGES) OAK_LAUNCH_FILE=$(OAK_LAUNCH_FILE) \
 		$(OAK_RUNNER) $(OAK_CONTAINER) $(OAK_IMAGE) run_oak_stereo
 
 .PHONY: run-oak
@@ -131,7 +134,7 @@ run-oak: oak-stereo
 .PHONY: oak-shell
 oak-shell: ensure-oak-image
 	chmod +x $(OAK_RUNNER)
-	ROS_DOMAIN_ID=$(ROS_DOMAIN_ID) RUN_PX4_SETUP=$(RUN_PX4_SETUP) BUILD_OPENVINS=$(BUILD_OPENVINS) \
+	ROS_DOMAIN_ID=$(ROS_DOMAIN_ID) RUN_PX4_SETUP=$(RUN_PX4_SETUP) BUILD_OPENVINS=$(BUILD_OPENVINS) RUN_ROS_GZ_BRIDGES=$(RUN_ROS_GZ_BRIDGES) \
 		$(OAK_RUNNER) $(OAK_CONTAINER) $(OAK_IMAGE) bash
 
 .PHONY: smoke-oak
@@ -159,11 +162,19 @@ setup-px4-host:
 	git -C "$$PX4_PATH" checkout "$$PX4_BRANCH"; \
 	git -C "$$PX4_PATH" pull --ff-only origin "$$PX4_BRANCH"; \
 	git -C "$$PX4_PATH" submodule sync --recursive; \
-	git -C "$$PX4_PATH" submodule update --init --recursive
+	git -C "$$PX4_PATH" submodule update --init --recursive; \
+	PX4_DIR="$$PX4_PATH" scripts/patch_px4_gz_models.sh
+
+.PHONY: patch-px4-gz-host
+patch-px4-gz-host:
+	@set -e; \
+	PX4_PATH="$$(git config -f .gitmodules --get submodule.PX4-Autopilot.path)"; \
+	test -n "$$PX4_PATH"; \
+	PX4_DIR="$$PX4_PATH" scripts/patch_px4_gz_models.sh
 
 .PHONY: check-scripts
 check-scripts:
-	for f in entrypoint.sh dockerRun.sh dockerRun_oak.sh scripts/smoke_no_oak.sh scripts/smoke_oak.sh scripts/run_oak_stereo.sh scripts/run_px4_baylands_H1.sh scripts/setup_px4_repo.sh scripts/setup_px4_deps.sh; do \
+	for f in entrypoint.sh dockerRun.sh dockerRun_oak.sh scripts/smoke_no_oak.sh scripts/smoke_oak.sh scripts/run_oak_stereo.sh scripts/patch_px4_gz_models.sh scripts/run_px4_baylands_H1.sh scripts/setup_px4_repo.sh scripts/setup_px4_deps.sh; do \
 		bash -n "$$f"; \
 	done
 

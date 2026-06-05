@@ -17,6 +17,10 @@ if [[ "${START_SSHD:-1}" == "1" ]]; then
     /usr/sbin/sshd -f /etc/ssh/sshd_config_test_clion
 fi
 
+if [[ -d /root/PX4-Autopilot/Tools/simulation/gz ]]; then
+    patch_px4_gz_models
+fi
+
 if [[ "${RUN_PX4_SETUP:-1}" == "1" ]]; then
     if [[ -f /root/PX4-Autopilot/Tools/setup/ubuntu.sh ]]; then
         setup_px4_deps

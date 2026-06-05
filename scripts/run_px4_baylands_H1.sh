@@ -40,6 +40,8 @@ if [[ ! -f "${PX4_DIR}/Makefile" ]]; then
   exit 1
 fi
 
+patch_px4_gz_models
+
 px4_build_dir="${PX4_DIR}/build/px4_sitl_default"
 px4_gz_env="${px4_build_dir}/rootfs/gz_env.sh"
 
