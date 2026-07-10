@@ -1,9 +1,14 @@
-[submodule "PX4-Autopilot"]
-	path   = PX4-Autopilot
-	url    = https://github.com/FedericoDD/PX4-Autopilot.git
-	branch = v1.16.2-stereo
-
 [submodule "colcon_ws/src/open_vins"]
     path   = colcon_ws/src/open_vins
     url    = https://github.com/alessandrocurci2002/OpenVins_StereocameraPX4.git
+    branch = master
+
+[submodule "OAK-ROS-depthai"]
+    path   = depthai-ws/src/depthai-ros
+    url    = https://github.com/alessandrocurci2002/OAK-ROS-depthai.git
+    branch = v3_humble
+
+[submodule "depthai-core"]
+    path   = depthai-ws/src/depthai-core
+    url    = https://github.com/luxonis/depthai-core.git
     branch = main
