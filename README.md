@@ -74,7 +74,6 @@ cd ..
 
 **OpenVINS** — cloned into `/root/colcon_ws/src/open_vins`. Built with `colcon` (packages: `ov_core`, `ov_init`, `ov_msckf`, `ov_eval`). Dependencies installed via `rosdep`.
 
-**PX4-Autopilot** — mounted from the host at `/root/PX4-Autopilot`. PX4 Ubuntu dependencies (`Tools/setup/ubuntu.sh --no-nuttx`) are installed at container startup, not at image build time.
 
 **open_vins** — cloned into `/root/colcon_ws/src/open_vins`: git clone https://github.com/alessandrocurci2002/OpenVins_StereocameraPX4.git colcon_ws/src/open_vins.Built with `colcon` (packages: `ov_core`, `ov_init`, `ov_msckf`, `ov_eval`). Dependencies installed via `rosdep`
 
@@ -140,7 +139,7 @@ chmod +x ./dockerRun.sh
 
 At startup the container will:
 1. Start `sshd`
-2. Run `Tools/setup/ubuntu.sh --no-nuttx` from the mounted PX4 tree
+2. Skip PX4 setup if you do not need it.
 3. Open a `tmux` session named `main`
 
 ***

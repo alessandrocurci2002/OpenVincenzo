@@ -59,7 +59,13 @@ RUN curl https://packages.osrfoundation.org/gazebo.gpg \
 https://packages.osrfoundation.org/gazebo/ubuntu-stable $(lsb_release -cs) main" \
         | tee /etc/apt/sources.list.d/gazebo-stable.list > /dev/null && \
     apt-get update && \
-    apt-get install -y gz-harmonic ros-humble-ros-gzharmonic && \
+    apt-get install -y --no-install-recommends gz-harmonic && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends ros2-testing-apt-source && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends ros-${ROS_DISTRO}-diagnostic-updater && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends ros-${ROS_DISTRO}-diagnostic-msgs && \
     rm -rf /var/lib/apt/lists/*
 
 # ── Ceres Solver ─────────────────────────────────────────────
@@ -76,16 +82,6 @@ RUN apt-get update && \
 RUN echo "source /opt/ros/humble/setup.bash" >> /root/.bashrc
 
 WORKDIR /root
-
-# ── Micro-XRCE-DDS-Agent v2.4.3 ──────────────────────────────
-RUN git clone -b v2.4.3 https://github.com/eProsima/Micro-XRCE-DDS-Agent.git && \
-    cd Micro-XRCE-DDS-Agent && \
-    mkdir build && cd build && \
-    cmake .. && \
-    make && \
-    make install && \
-    ldconfig /usr/local/lib/ && \
-    echo "Micro-XRCE-DDS-Agent Installed"
 
 RUN git config --global --add safe.directory '*'
 
@@ -118,41 +114,6 @@ RUN apt-get update && \
 
 RUN mkdir -p /root/colcon_ws/src
 
-# ── Shortcut: run_px4_baylands_H1 ────────────────────────────
-RUN printf '#!/bin/bash\nsource /opt/ros/humble/setup.bash\ncd /root/PX4-Autopilot\nHEADLESS=1 PX4_GZ_WORLD=baylands make px4_sitl gz_x500_depth\n' \
-    > /usr/local/bin/run_px4_baylands_H1 && \
-    chmod +x /usr/local/bin/run_px4_baylands_H1
-
-# ── Shortcut: run_image_bridge ───────────────────────────────
-RUN printf '#!/bin/bash\nsource /opt/ros/humble/setup.bash\nros2 run ros_gz_bridge parameter_bridge /world/baylands/model/x500_depth_0/link/camera_link/sensor/IMX214/image@sensor_msgs/msg/Image[gz.msgs.Image\n' \
-    > /usr/local/bin/run_image_bridge && \
-    chmod +x /usr/local/bin/run_image_bridge
-
-# ── Shortcut: run_image_bridge_left ───────────────────────────
-RUN printf '#!/bin/bash\nsource /opt/ros/humble/setup.bash\nros2 run ros_gz_bridge parameter_bridge /world/baylands/model/x500_depth_0/link/camera_link/sensor/left_camera/image@sensor_msgs/msg/Image[gz.msgs.Image\n' \
-    > /usr/local/bin/run_image_bridge_left && \
-    chmod +x /usr/local/bin/run_image_bridge_left
-
-# ── Shortcut: run_image_bridge_right ──────────────────────────
-RUN printf '#!/bin/bash\nsource /opt/ros/humble/setup.bash\nros2 run ros_gz_bridge parameter_bridge /world/baylands/model/x500_depth_0/link/camera_link/sensor/right_camera/image@sensor_msgs/msg/Image[gz.msgs.Image\n' \
-    > /usr/local/bin/run_image_bridge_right && \
-    chmod +x /usr/local/bin/run_image_bridge_right
-
-# ── Shortcut: run_pointcloud_bridge ──────────────────────────
-RUN printf '#!/bin/bash\nsource /opt/ros/humble/setup.bash\nros2 run ros_gz_bridge parameter_bridge \\\n  /depth_camera/points@sensor_msgs/msg/PointCloud2[gz.msgs.PointCloudPacked \\\n  /depth_camera@sensor_msgs/msg/Image[gz.msgs.Image \\\n  /camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo\n' \
-    > /usr/local/bin/run_pointcloud_bridge && \
-    chmod +x /usr/local/bin/run_pointcloud_bridge
-
-    # ── Shortcut: run_imu_bridge ──────────────────────────
-RUN printf '#!/bin/bash\nsource /opt/ros/humble/setup.bash\nros2 run ros_gz_bridge parameter_bridge \\\n  /world/baylands/model/x500_depth_0/link/base_link/sensor/imu_sensor/imu@sensor_msgs/msg/Imu[gz.msgs.IMU\n' \
-    > /usr/local/bin/run_imu_bridge && \
-    chmod +x /usr/local/bin/run_imu_bridge
-
-# ── Shortcut: run_1 (tutti i bridge + PX4) ───────────────────
-RUN printf '#!/bin/bash\nsource /opt/ros/humble/setup.bash\nrun_image_bridge &\nrun_pointcloud_bridge &\nrun_image_bridge_left &\nrun_image_bridge_right &\nrun_imu_bridge &\nrun_px4_baylands_H1\n' \
-    > /usr/local/bin/run_1 && \
-    chmod +x /usr/local/bin/run_1
-
 # ── CLion remote debug via SSH ───────────────────────────────
 # https://blog.jetbrains.com/clion/2020/01/using-docker-with-clion/
 RUN ( \
@@ -164,20 +125,6 @@ RUN ( \
   && mkdir /run/sshd
 RUN useradd -m user && yes password | passwd user && usermod -s /bin/bash user
 
-# CMD ["bash", "-c", "\
-# DEBIAN_FRONTEND=noninteractive /usr/sbin/sshd && \
-# cd /root/PX4-Autopilot && \
-# DEBIAN_FRONTEND=noninteractive bash ./Tools/setup/ubuntu.sh --no-nuttx && \
-# echo 'PX4-Autopilot Installed' && \
-# source /opt/ros/humble/setup.bash && \
-# apt-get update && \
-# cd /root/colcon_ws && \
-# rosdep install --from-paths src --ignore-src -r -y && \
-# MAKEFLAGS='-j2' colcon build --symlink-install \
-#     --executor sequential \
-#     --packages-select ov_core ov_init ov_msckf ov_eval && \
-# rm -rf /var/lib/apt/lists/* && \
-# tmux new-session -A -s main"]
 
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh

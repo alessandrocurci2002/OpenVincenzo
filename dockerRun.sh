@@ -32,8 +32,12 @@ sudo docker run -it \
   --env="ROS_DOMAIN_ID=0" \
   --volume="/tmp/.X11-unix:/tmp/.X11-unix:rw" \
   --volume="$XAUTH:$XAUTH:rw" \
-  --volume="$(pwd)/PX4-Autopilot:/root/PX4-Autopilot" \
   --volume="$(pwd)/colcon_ws/src/open_vins:/root/colcon_ws/src/open_vins" \
+  --volume="$(pwd)/depthai-ws:/root/depthai-ws" \
+  -v /dev:/dev \
+  -v /sys:/sys \
+  --device=/dev/bus/usb:/dev/bus/usb \
+  --device-cgroup-rule='c 189:* rmw' \
   --net=host \
   --privileged \
   $IMAGE_NAME\
