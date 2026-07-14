@@ -1,0 +1,67 @@
+# Build / install / log
+build/
+build-*/
+install/
+install-*/
+log/
+logs/
+**/log/
+
+# colcon / ROS
+build/
+install/
+log/
+_build/
+_install/
+_log/
+
+# Python
+venv/
+venv/*
+.venv/
+env/
+ENV/
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+*.eggs/
+dist/
+build_lib/
+
+# CMake
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+
+# Compiled object files and libraries
+*.o
+*.obj
+*.so
+*.a
+*.lib
+*.dll
+*.exe
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+*.log.*
+
+# Misc
+.pytest_cache/
+.coverage
+coverage.xml
+nosetests.xml
+
