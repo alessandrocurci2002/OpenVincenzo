@@ -10,14 +10,22 @@ help:
 
 # Launch the DepthAI driver with rectified stereo images enabled
 # Requires the ROS 2 environment to be sourced first.
+depthai-rviz:
+	@echo "Launching DepthAI driver..."
+	ros2 launch depthai_ros_driver_v3 driver.launch.py rs_compat:=true enable_infra1:=true enable_infra2:=true use_rviz:=true
+
 depthai:
 	@echo "Launching DepthAI driver..."
-	ros2 launch depthai_ros_driver driver.launch.py rs_compat:=true enable_infra1:=true enable_infra2:=true
+	ros2 launch depthai_ros_driver_v3 driver.launch.py rs_compat:=true enable_infra1:=true enable_infra2:=true
 
 # Launch the DepthAI driver with only the rectified infra streams active
 depthai-rectified:
 	@echo "Launching DepthAI driver with rectified infra streams only..."
-	ros2 launch depthai_ros_driver driver.launch.py rs_compat:=true enable_infra1:=true enable_infra2:=true enable_color:=false enable_depth:=false
+	ros2 launch depthai_ros_driver_v3 driver.launch.py rs_compat:=true enable_infra1:=true enable_infra2:=true enable_color:=false enable_depth:=false
+
+depthai-rectified-rviz:
+	@echo "Launching DepthAI driver with rectified infra streams only..."
+	ros2 launch depthai_ros_driver_v3 driver.launch.py rs_compat:=true enable_infra1:=true enable_infra2:=true enable_color:=false enable_depth:=false use_rviz:=true
 
 # Launch OpenVINS (example subscriber)
 openvins:

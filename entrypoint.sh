@@ -13,14 +13,24 @@ apt-get update
 echo "+++ Finished Updating"
 
 
-echo "+++ Sourcing and Building depthai-ros"
+echo "+++ Sourcing and Building depthai"
 source /opt/ros/$ROS_DISTRO/setup.bash
-cd /root/depthai-ws/src
-git clone https://github.com/luxonis/depthai-core.git
-cd depthai-core && git submodule update --init --recursive && cd ..
-colcon build --symlink-install
+
+cd /root/depthai-ws/src/depthai-core
+git checkout v3_humble
+git submodule update --init --recursive
+cd ..
+cd /root/depthai-ws/src/depthai-ros
+git checkout v3_humble
+git submodule update --init --recursive 
+cd ..
+
+cd /root/depthai-ws
+rosdep install --from-paths src --ignore-src -r -y
+MAKEFLAGS="-j1 -l1" colcon build --symlink-install
 source /root/depthai-ws/install/setup.bash
-echo "+++ depthai-ros Build Completed "
+
+echo "+++ depthai Build Completed "
 
 
 cd /root/colcon_ws
