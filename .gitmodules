@@ -5,7 +5,7 @@
 
 [submodule "OAK-ROS-depthai"]
     path   = depthai-ws/src/depthai-ros
-    url    = https://github.com/alessandrocurci2002/OAK-ROS-depthai.git
+    url    = https://github.com/alessandrocurci2002/depthai-ros.git
     branch = v3_humble
 
 [submodule "depthai-core"]

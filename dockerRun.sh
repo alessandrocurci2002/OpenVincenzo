@@ -34,6 +34,7 @@ sudo docker run -it \
   --volume="$XAUTH:$XAUTH:rw" \
   --volume="$(pwd)/colcon_ws/src/open_vins:/root/colcon_ws/src/open_vins" \
   --volume="$(pwd)/depthai-ws:/root/depthai-ws" \
+  --volume="$(pwd)/Makefile:/root/Makefile" \
   -v /dev:/dev \
   -v /sys:/sys \
   --device=/dev/bus/usb:/dev/bus/usb \
