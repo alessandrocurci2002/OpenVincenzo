@@ -31,3 +31,50 @@ depthai-rectified-rviz:
 openvins:
 	@echo "Launching OpenVINS..."
 	ros2 launch ov_msckf subscribe.launch.py config:=euroc_mav
+
+
+depthai-rviz:
+	@echo "Launching DepthAI driver..."
+	ros2 launch depthai_ros_driver_v3 driver.launch.py \
+		rs_compat:=true \
+		enable_infra1:=true \
+		enable_infra2:=true \
+		pointcloud.enable:=true \
+		camera.i_enable_imu:=true \
+		use_rviz:=true
+
+depthai:
+	@echo "Launching DepthAI driver..."
+	ros2 launch depthai_ros_driver_v3 driver.launch.py \
+		rs_compat:=true \
+		enable_infra1:=true \
+		enable_infra2:=true \
+		pointcloud.enable:=true \
+		camera.i_enable_imu:=true
+
+depthai-rectified:
+	@echo "Launching DepthAI driver with rectified infra streams only..."
+	ros2 launch depthai_ros_driver_v3 driver.launch.py \
+		rs_compat:=true \
+		enable_infra1:=true \
+		enable_infra2:=true \
+		enable_color:=true \
+		enable_depth:=true \
+		pointcloud.enable:=true \
+		camera.i_enable_imu:=true
+
+depthai-rectified-rviz:
+	@echo "Launching DepthAI driver with rectified infra streams only..."
+	ros2 launch depthai_ros_driver_v3 driver.launch.py \
+		rs_compat:=true \
+		enable_infra1:=true \
+		enable_infra2:=true \
+		enable_color:=true \
+		enable_depth:=true \
+		pointcloud.enable:=true \
+		camera.i_enable_imu:=true \
+		use_rviz:=true
+
+openvins:
+	@echo "Launching OpenVINS..."
+	ros2 launch ov_msckf subscribe.launch.py config:=euroc_mav
