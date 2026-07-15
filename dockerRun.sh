@@ -35,11 +35,12 @@ sudo docker run -it \
   --volume="$(pwd)/colcon_ws/src/open_vins:/root/colcon_ws/src/open_vins" \
   --volume="$(pwd)/depthai-ws:/root/depthai-ws" \
   --volume="$(pwd)/Makefile:/root/Makefile" \
+  --volume="$(pwd)/entrypoint.sh:/entrypoint.sh:ro" \
   -v /dev:/dev \
   -v /sys:/sys \
   --device=/dev/bus/usb:/dev/bus/usb \
   --device-cgroup-rule='c 189:* rmw' \
   --net=host \
   --privileged \
-  $IMAGE_NAME\
-  
+  $IMAGE_NAME
+# the entrypoint was mounted only for debugging

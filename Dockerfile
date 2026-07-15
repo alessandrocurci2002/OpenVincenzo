@@ -7,7 +7,7 @@
 #                + Ceres Solver
 #                + CLion remote debug (SSH)
 # ============================================================
-FROM osrf/ros:humble-desktop-full
+FROM ros:humble
 
 SHELL ["/bin/bash", "-c"]
 
