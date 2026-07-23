@@ -5,7 +5,10 @@
 
 PROJECT_DIR := $(shell pwd)/depthai-ws
 CAMERA_CONFIG := $(PROJECT_DIR)/src/depthai-ros/depthai_ros_driver/config/stereo.yaml
+OPENVINS_CONFIG := /root/colcon_ws/src/open_vins/config/oakdpro_calib05/estimator_config.yaml
 
+build-depthai:
+	@echo "Building DepthAI ROS driver..."
 help:
 	@echo "Usage: make <target>"
 	@echo ""
@@ -33,9 +36,6 @@ depthai:
 		use_rviz:=false \
 		params_file:=$(CAMERA_CONFIG)
 
-#       
-# 		left.i_disable_node:=true \
-# 		right.i_disable_node:=true \
 
 depthai-rectified:
 	@echo "Launching DepthAI driver with rectified infra streams only..."
@@ -60,8 +60,18 @@ depthai-rectified-rviz:
 		camera.i_enable_imu:=true \
 		use_rviz:=true
 
+build-depthai:
+	@echo "Building DepthAI ROS driver..."
+	cd depthai-ws && \
+	rosdep install --from-paths src --ignore-src -r -y && \
+	MAKEFLAGS="-j1 -l1" colcon build --symlink-install && \
+	cd src && \
+	source /root/depthai-ws/install/setup.bash
+
+
 openvins:
 	@echo "Launching OpenVINS..."
-	source ~/colcon_ws/install/setup.bash
-	
-	ros2 run ov_msckf run_subscribe_msckf --ros-args -p config_path:=/root/colcon_ws/src/open_vins/config/oakdpro/estimator_config.yaml
+	cd colcon_ws/src && \
+	ros2 run ov_msckf run_subscribe_msckf --ros-args -p config_path:=$(OPENVINS_CONFIG)
+
+
