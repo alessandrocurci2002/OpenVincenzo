@@ -5,7 +5,7 @@
 
 PROJECT_DIR := $(shell pwd)/depthai-ws
 CAMERA_CONFIG := $(PROJECT_DIR)/src/depthai-ros/depthai_ros_driver/config/stereo.yaml
-OPENVINS_CONFIG := /root/colcon_ws/src/open_vins/config/oakdpro_calib05/estimator_config.yaml
+OPENVINS_CONFIG := /root/colcon_ws/src/open_vins/config/oakdpro_calib05_newImucalib/estimator_config.yaml
 
 build-depthai:
 	@echo "Building DepthAI ROS driver..."
