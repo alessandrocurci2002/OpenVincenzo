@@ -18,12 +18,12 @@ echo "+++ Sourcing and Building depthai"
 source /opt/ros/$ROS_DISTRO/setup.bash
 
 cd /root/depthai-ws/src/depthai-core
-# git checkout v3_humble
-# git submodule update --init --recursive
+git checkout v3_humble
+git submodule update --init --recursive
 cd ..
 cd /root/depthai-ws/src/depthai-ros
-# git checkout v3_humble
-# git submodule update --init --recursive 
+git checkout v3_humble
+git submodule update --init --recursive
 cd ..
 
 cd /root/depthai-ws
