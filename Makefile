@@ -75,3 +75,18 @@ openvins:
 	ros2 run ov_msckf run_subscribe_msckf --ros-args -p config_path:=$(OPENVINS_CONFIG)
 
 
+BAG_NAME ?= subset
+rosrecord:
+	@echo "Recording ROS topics..."
+	ros2 bag record -o $(BAG_NAME) /oak/imu/data /oak/left/image_raw /oak/right/image_raw /oak/left/image_rect /oak/right/image_rect /oak/left/camera_info /oak/right/camera_info
+	@echo "Recording complete. Bag file saved in the current directory under \"$(BAG_NAME)\"."
+
+# run make rosrecord BAG_NAME=my_bag to specify the folder name
+
+rosbag-postprocessing:
+	@echo "Post-processing ROS bag..."
+	@echo "Converting bag"
+	rosbags-convert --src $(BAG_NAME) --dst $(BAG_NAME).bag
+	@echo "moving the bag"
+	mv $(BAG_NAME).bag depthai-ws/
+	
