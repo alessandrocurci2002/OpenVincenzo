@@ -38,7 +38,18 @@ if ! git -C depthai-ros rev-parse --is-inside-work-tree > /dev/null 2>&1; then
     git -C depthai-ros checkout 7aec66fdf53d5564b94bd801123b8ef43f0e30a7
 fi
 cd depthai-ros
-git submodule update --init --recursive
+# depthai-ros's own .gitmodules has a malformed "path" for the kalibr
+# submodule (it records "depthai-ws/src/depthai-ros/calibration" instead of
+# "calibration/kalibr", the actual gitlink path), so "git submodule update
+# --init" fails outright with "No url found for submodule path
+# 'calibration/kalibr'" even without --recursive. depthai-ros has no other
+# submodule, so skip the git-submodule machinery entirely and clone kalibr
+# directly instead.
+if ! git -C calibration/kalibr rev-parse --is-inside-work-tree > /dev/null 2>&1; then
+    rm -rf calibration/kalibr
+    git clone --branch master https://github.com/ethz-asl/kalibr.git calibration/kalibr
+    git -C calibration/kalibr checkout 1f60227442d25e36365ef5f72cd80b9666d73467
+fi
 cd ..
 
 cd /root/depthai-ws
