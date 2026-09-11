@@ -1,0 +1,38 @@
+rosbag2_bagfile_information:
+  compression_format: ''
+  compression_mode: ''
+  custom_data: null
+  duration:
+    nanoseconds: 172318060293
+  files:
+  - duration:
+      nanoseconds: 172318060293
+    message_count: 6517
+    path: test2_tagslam_odom.db3
+    starting_time:
+      nanoseconds_since_epoch: 1785509480133540602
+  message_count: 6517
+  relative_file_paths:
+  - test2_tagslam_odom.db3
+  ros_distro: rosbags
+  starting_time:
+    nanoseconds_since_epoch: 1785509480133540602
+  storage_identifier: sqlite3
+  topics_with_message_count:
+  - message_count: 3240
+    topic_metadata:
+      name: /tagslam/odom/body_rig
+      offered_qos_profiles: []
+      serialization_format: cdr
+      type: nav_msgs/msg/Odometry
+      type_description_hash: 
+        RIHS01_3cc97dc7fb7502f8714462c526d369e35b603cfc34d946e3f2eda2766dfec6e0
+  - message_count: 3277
+    topic_metadata:
+      name: /tf
+      offered_qos_profiles: []
+      serialization_format: cdr
+      type: tf2_msgs/msg/TFMessage
+      type_description_hash: 
+        RIHS01_e369d0f05a23ae52508854b66f6aa0437f3449d652e8cbf22d5abe85d020f087
+  version: 9
