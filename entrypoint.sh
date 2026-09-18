@@ -7,6 +7,12 @@ set -e
 
 source /opt/ros/humble/setup.bash
 
+# Isolate this system's ROS2 graph from other ROS2 traffic on the LAN
+# (default ROS_DOMAIN_ID=0 was picking up ghost /oak nodes from elsewhere
+# on the network, causing ros2 launch to hang waiting on the wrong
+# load_node service response).
+export ROS_DOMAIN_ID=42
+
 
 echo "+++ Updating"
 apt-get update
