@@ -64,4 +64,7 @@ Thumbs.db
 .coverage
 coverage.xml
 nosetests.xml
+.cache
 
+# rosbag
+*.bag
