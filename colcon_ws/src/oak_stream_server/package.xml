@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<package format="3">
+
+  <name>oak_stream_server</name>
+  <version>0.1.0</version>
+  <description>Serves a ROS 2 image topic (OAK-D Pro rectified stream) as an MJPEG HTTP stream via Flask, for viewing from a browser on the local network.</description>
+  <maintainer email="alessandrocurci2002@gmail.com">Alessandro Curci</maintainer>
+  <license>MIT</license>
+
+  <buildtool_depend>ament_python</buildtool_depend>
+
+  <depend>rclpy</depend>
+  <depend>sensor_msgs</depend>
+  <depend>cv_bridge</depend>
+  <!-- Flask is a plain Python package with no reliable rosdep key: it is
+       installed system-wide via apt (python3-flask) in the Dockerfile
+       instead of being declared here, so a missing/renamed rosdep key for
+       it can never break `rosdep install` for the rest of colcon_ws. -->
+
+  <test_depend>ament_copyright</test_depend>
+  <test_depend>ament_flake8</test_depend>
+  <test_depend>ament_pep257</test_depend>
+  <test_depend>python3-pytest</test_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+
+</package>

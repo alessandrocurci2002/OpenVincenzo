@@ -1,0 +1,41 @@
+# Configuration for the OAK-D Pro -> MJPEG HTTP stream server.
+# See colcon_ws/src/oak_stream_server/README.md for details.
+
+/**:
+  ros__parameters:
+
+    # ROS 2 sensor_msgs/Image topic to stream.
+    input_topic: "/oak/left/image_rect"
+
+    # HTTP bind address. "0.0.0.0" listens on every IP the Raspberry Pi has
+    # (Wi-Fi included) — the container already runs with --net=host, so this
+    # binds directly to the host's network interfaces, no port mapping
+    # needed. Set this to one specific interface IP (e.g. the Wi-Fi address)
+    # if you want the stream reachable only from that network.
+    http_host: "0.0.0.0"
+    http_port: 5000
+
+    # Purely cosmetic: the actual IP a second device should browse to (shown
+    # in the startup log and on the index page). "0.0.0.0" above is a BIND
+    # address, not something you can type into a browser, so this is not
+    # inferred automatically. Fill in the Raspberry Pi's current Wi-Fi IP
+    # (run `hostname -I` on it) — it's only used to print a ready-to-click
+    # URL, changing it never affects what the server actually binds to. A
+    # DHCP-assigned IP can change across reboots; leave empty to fall back to
+    # a generic "run hostname -I" hint instead of a possibly stale address.
+    advertised_host: "192.168.0.203"
+
+    # Path whose filesystem's free space is shown under the stream. "/" is
+    # right here: inside the container it is an overlay on the Raspberry Pi's
+    # root filesystem, the same one that holds the repo, Docker and the
+    # rosbags (all on the SD card, /dev/mmcblk0p2). Point it at another mount
+    # if the bags ever go to a different disk.
+    disk_path: "/"
+
+    # Frames per second actually encoded/served. The camera publishes much
+    # faster than a debug viewer needs; keeping this low avoids competing
+    # with OpenVINS for CPU on the Raspberry Pi 5 (no GPU offload there).
+    fps_limit: 10.0
+
+    # cv2.IMWRITE_JPEG_QUALITY, 0-100. Lower = less CPU/bandwidth, blockier image.
+    jpeg_quality: 80
