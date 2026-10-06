@@ -1,0 +1,40 @@
+# Configuration for the OpenVINS -> PX4 VehicleOdometry bridge.
+# See colcon_ws/src/px4_vio_bridge/README.md for the full explanation of
+# every parameter, in particular imu_to_body_rotation_deg.
+
+/**:
+  ros__parameters:
+
+    # Topic published by OpenVINS (ov_msckf/launch/subscribe.launch.py
+    # default namespace is "ov_msckf").
+    input_topic: "/odomimu"
+
+    # PX4 input topic (px4_msgs/VehicleOdometry, no _v<N> suffix: MESSAGE_VERSION 0).
+    output_topic: "/fmu/in/vehicle_visual_odometry"
+
+    # QoS used to subscribe to input_topic. OpenVINS publishes odomimu with
+    # the rclcpp default (RELIABLE); only change this if that changes upstream.
+    input_qos_reliability: "reliable"   # "reliable" or "best_effort"
+    input_qos_depth: 10
+
+    # Depth of the output publisher queue. Reliability is fixed BEST_EFFORT
+    # in code (not exposed here): PX4's uXRCE-DDS client subscribes
+    # BEST_EFFORT, and a RELIABLE publisher here would mean messages get
+    # silently dropped rather than delivered.
+    output_qos_depth: 5
+
+    # Fixed rotation from the OpenVINS IMU frame (the physical IMU inside the
+    # OAK-D Pro, whose axes were calibrated to be ~coincident with the left
+    # camera's optical axes: x-right, y-down, z-forward) to the drone's body
+    # FRD frame (x-forward, y-right, z-down), applied as
+    # R = Rz(yaw) @ Ry(pitch) @ Rx(roll) (aerospace ZYX, degrees).
+    #
+    # The default [90, 0, 90] is exactly the OAK-D-Pro-optical -> FRD axis
+    # permutation (FRD_x=IMU_z, FRD_y=IMU_x, FRD_z=IMU_y), and is correct
+    # ONLY if the camera/IMU is mounted level and forward-facing on the
+    # airframe. If the physical mounting is rotated relative to the Pixhawk
+    # (e.g. tilted down, sideways-facing), measure that extra misalignment
+    # and compose it into these angles — this parameter must describe the
+    # actual IMU-to-drone-body rotation, not just the OAK-D Pro's internal
+    # optical-to-IMU one.
+    imu_to_body_rotation_deg: [100.0, 0.0, 90.0]

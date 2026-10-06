@@ -1,0 +1,35 @@
+<?xml version="1.0"?>
+<package format="3">
+
+  <name>px4_vio_bridge</name>
+  <version>0.1.0</version>
+  <description>Bridges OpenVINS odomimu (nav_msgs/Odometry) into PX4's VehicleOdometry (uXRCE-DDS) with FRD frame conversion.</description>
+  <maintainer email="alessandrocurci2002@gmail.com">Alessandro Curci</maintainer>
+  <license>MIT</license>
+
+  <buildtool_depend>ament_python</buildtool_depend>
+
+  <depend>rclpy</depend>
+  <depend>nav_msgs</depend>
+  <depend>px4_msgs</depend>
+  <exec_depend>python3-numpy</exec_depend>
+  <exec_depend>python3-yaml</exec_depend>
+  <exec_depend>rosidl_runtime_py</exec_depend>
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+  <!-- launch/vio_pipeline.launch.py also starts ov_msckf and
+       depthai_ros_driver_v3, deliberately not declared here: the bridge node
+       itself does not need them, and depthai_ros_driver_v3 lives in another
+       workspace (depthai-ws), so its key would not resolve and would break
+       the rosdep install of the whole colcon_ws in entrypoint.sh. -->
+
+  <test_depend>ament_copyright</test_depend>
+  <test_depend>ament_flake8</test_depend>
+  <test_depend>ament_pep257</test_depend>
+  <test_depend>python3-pytest</test_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+
+</package>
