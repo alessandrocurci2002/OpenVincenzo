@@ -23,6 +23,11 @@ touch $XAUTH
 xauth nlist $DISPLAY | sed -e 's/^..../ffff/' | xauth -f $XAUTH nmerge -
 chmod a+r $XAUTH
 
+# The Makefile is not mounted as a single file: a single-file bind mount pins
+# the file's inode, so any edit that replaces the file (git checkout/pull,
+# sed -i, editors/tools doing atomic saves) stays invisible in the container
+# until it is restarted. The whole repo is mounted read-only instead, and
+# entrypoint.sh links /root/Makefile to it.
 sudo docker run -it \
   --name=$CONTAINER_NAME \
   --env="DISPLAY=$DISPLAY" \
@@ -33,8 +38,11 @@ sudo docker run -it \
   --volume="/tmp/.X11-unix:/tmp/.X11-unix:rw" \
   --volume="$XAUTH:$XAUTH:rw" \
   --volume="$(pwd)/colcon_ws/src/open_vins:/root/colcon_ws/src/open_vins" \
+  --volume="$(pwd)/colcon_ws/src/px4_vio_bridge:/root/colcon_ws/src/px4_vio_bridge" \
+  --volume="$(pwd)/colcon_ws/src/oak_stream_server:/root/colcon_ws/src/oak_stream_server" \
   --volume="$(pwd)/depthai-ws:/root/depthai-ws" \
-  --volume="$(pwd)/Makefile:/root/Makefile" \
+  --volume="$(pwd)/px4-ws:/root/px4-ws" \
+  --volume="$(pwd):/root/OpenVincenzo:ro" \
   --volume="$(pwd)/entrypoint.sh:/entrypoint.sh:ro" \
   -v /dev:/dev \
   -v /sys:/sys \
