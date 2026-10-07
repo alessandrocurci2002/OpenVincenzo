@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+<package format="3">
+
+  <name>vio_recorder</name>
+  <version>0.1.0</version>
+  <description>Records a configurable set of topics (VIO, PX4 vehicle state, OAK-D Pro images) to a rosbag2.</description>
+  <maintainer email="alessandrocurci2002@gmail.com">Alessandro Curci</maintainer>
+  <license>MIT</license>
+
+  <buildtool_depend>ament_python</buildtool_depend>
+
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>rosbag2_py</exec_depend>
+  <exec_depend>rosidl_runtime_py</exec_depend>
+  <exec_depend>python3-yaml</exec_depend>
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+  <!-- The message packages of the recorded topics (nav_msgs, sensor_msgs,
+       px4_msgs) are loaded at run time from the topic types and are not
+       declared: px4_msgs lives in another workspace (px4-ws), so its key
+       would not resolve in the rosdep install of colcon_ws. -->
+
+  <test_depend>ament_copyright</test_depend>
+  <test_depend>ament_flake8</test_depend>
+  <test_depend>ament_pep257</test_depend>
+  <test_depend>python3-pytest</test_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+
+</package>

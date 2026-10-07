@@ -37,4 +37,5 @@
     # and compose it into these angles — this parameter must describe the
     # actual IMU-to-drone-body rotation, not just the OAK-D Pro's internal
     # optical-to-IMU one.
-    imu_to_body_rotation_deg: [80.0, 0.0, 90.0]
+    imu_to_body_rotation_deg: [82.0, -0.9, 90.0] #found empirically
+
