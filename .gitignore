@@ -15,6 +15,10 @@ _build/
 _install/
 _log/
 
+# px4_msgs / px4_msgs_old / translation_node generati da entrypoint.sh
+# (copy_to_ros_ws.sh); il submodule PX4-Autopilot sta fuori da px4-ws/src
+px4-ws/src/
+
 # Python
 venv/
 venv/*
