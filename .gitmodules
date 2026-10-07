@@ -17,7 +17,3 @@
 	url = https://github.com/FedericoDD/PX4-Autopilot.git
 	branch = PX4-Autopilot/v1.17.0
 	update = none
-[submodule "tagslam-ws/src/tagslam"]
-	path = tagslam-ws/src/tagslam
-	url = https://github.com/berndpfrommer/tagslam.git
-	branch = ros2
