@@ -19,6 +19,7 @@ from datetime import datetime
 import rclpy
 import rosbag2_py
 import yaml
+from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, HistoryPolicy, QoSProfile, ReliabilityPolicy
 from rosidl_runtime_py.utilities import get_message
@@ -198,7 +199,9 @@ def main(args=None):
     node = TopicRecorder()
     try:
         rclpy.spin(node)
-    except (_StopRecording, KeyboardInterrupt):
+    # Ctrl+C arrives as KeyboardInterrupt, or as ExternalShutdownException when
+    # rclpy's signal handler shuts the context down while spin() is waiting.
+    except (_StopRecording, KeyboardInterrupt, ExternalShutdownException):
         pass
     finally:
         node.close()

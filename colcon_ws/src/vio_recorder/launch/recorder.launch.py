@@ -27,6 +27,15 @@ def generate_launch_description():
         name="vio_recorder",
         output="screen",
         parameters=[{"config_path": LaunchConfiguration("config_path")}],
+        # No log file in ~/.ros/log (console and /rosout stay): when the SD card
+        # stalls, writing it blocks the status callback, and with it every
+        # subscription of this single-threaded node, for as long as the stall.
+        ros_arguments=["--disable-external-lib-logs"],
+        # On Ctrl+C the node writes what is left in the cache before exiting,
+        # which can take minutes with a large max_cache_size_mb: launch must not
+        # escalate to SIGTERM/SIGKILL after its default 5 + 5 s.
+        sigterm_timeout="600",
+        sigkill_timeout="600",
     )
     # Shells opened with `docker exec` start on domain 0, where the pipeline's
     # topics are invisible: same fix as vio_pipeline.launch.py.

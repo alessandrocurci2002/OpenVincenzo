@@ -40,6 +40,16 @@ Recording stops by itself when free space drops below `min_free_space_mb`
 (default 1000 MB). Every `status_period_s` the node prints the rate, message
 count and size of each topic and the free space left.
 
+The SD card writes the bag slower than the images arrive (~10 vs ~15 MB/s)
+and stalls for seconds at a time. `max_cache_size_mb` (default 2000) keeps the
+backlog in RAM, up to twice that value, for a few minutes of recording; if it
+fills, rosbag2 drops messages and prints `Cache buffers lost messages` at the
+end. After Ctrl+C the node first writes the cache to disk, which can take
+minutes: wait for `bag closed`, the launch file does not kill it for 10
+minutes. The launch file also disables the node's log file in `~/.ros/log`
+(`--disable-external-lib-logs`): writing it during a stall blocked the node
+and left 8–23 s holes in every topic. The real fix is a faster disk (USB 3 SSD).
+
 ## Domain
 
 The launch file sets `ROS_DOMAIN_ID` from its `ros_domain_id` argument
