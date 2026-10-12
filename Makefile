@@ -1,15 +1,16 @@
-.PHONY: help depthai depthai-rectified openvins vio-bridge vio-pipeline oak-stream tagslam-detect tagslam-run tagslam-gt
+.PHONY: help depthai depthai-rectified openvins vio-bridge vio-pipeline oak-stream record tagslam-detect tagslam-run tagslam-gt
 
 
 #adding env variables
 
 PROJECT_DIR := $(shell pwd)/depthai-ws
 CAMERA_CONFIG := $(PROJECT_DIR)/src/depthai-ros/depthai_ros_driver/config/stereo.yaml
-OPENVINS_CONFIG := /root/colcon_ws/src/open_vins/config/oakdpro_calib05_newImucalib/estimator_config.yaml
+OPENVINS_CONFIG := /root/colcon_ws/src/open_vins/config/oakdpro_config01_drone_v2/estimator_config.yaml
 # OPENVINS_CONFIG := /root/colcon_ws/src/open_vins/ov_data/sc_fucina02/OpenVINS_eval/rosbags/test_3/oakdpro_test_3_v1/estimator_config.yaml
 ROSBAG_PLAY_DIR := /root/colcon_ws/src/open_vins/ov_data/sc_fucina02/OpenVINS_eval/rosbags/test_3/prova_tagslam3
 VIO_BRIDGE_CONFIG := /root/colcon_ws/src/px4_vio_bridge/config/vio_bridge.yaml
 OAK_STREAM_CONFIG := /root/colcon_ws/src/oak_stream_server/config/oak_stream.yaml
+RECORDER_CONFIG := /root/colcon_ws/src/vio_recorder/config/recorder.yaml
 
 OPENVINS_SAVE_DIR := /root/colcon_ws/src/open_vins/ov_data/sc_fucina02/OpenVINS_eval/rosbags/test_3/oakdpro_test_3_v1
 OPENVINS_FILEPATH_EST := $(OPENVINS_SAVE_DIR)/ov_estimate.txt
@@ -28,6 +29,7 @@ help:
 	@echo "  make vio-bridge         Launch the OpenVINS -> PX4 VehicleOdometry bridge"
 	@echo "  make vio-pipeline       Launch agent + DepthAI + OpenVINS + VIO bridge, one stage at a time"
 	@echo "  make oak-stream         Launch the /oak/left/image_rect -> MJPEG HTTP stream server"
+	@echo "  make record             Record the topics enabled in RECORDER_CONFIG to a rosbag2"
 	@echo "  make rviz-left-image    Launch rviz2 showing /oak/left/image_rect"
 	@echo "  make rviz-trackhist     Launch rviz2 showing /trackhist and /pathimu (fixed frame: global)"
 	@echo ""
@@ -122,6 +124,11 @@ vio-pipeline:
 oak-stream:
 	@echo "Launching OAK-D Pro MJPEG stream server..."
 	ros2 launch oak_stream_server oak_stream.launch.py config_path:=$(OAK_STREAM_CONFIG)
+
+
+record:
+	@echo "Recording the topics enabled in $(RECORDER_CONFIG)..."
+	ros2 launch vio_recorder recorder.launch.py config_path:=$(RECORDER_CONFIG)
 
 
 BAG_NAME ?= subset

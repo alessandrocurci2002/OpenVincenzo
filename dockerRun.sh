@@ -40,6 +40,7 @@ sudo docker run -it \
   --volume="$(pwd)/colcon_ws/src/open_vins:/root/colcon_ws/src/open_vins" \
   --volume="$(pwd)/colcon_ws/src/px4_vio_bridge:/root/colcon_ws/src/px4_vio_bridge" \
   --volume="$(pwd)/colcon_ws/src/oak_stream_server:/root/colcon_ws/src/oak_stream_server" \
+  --volume="$(pwd)/colcon_ws/src/vio_recorder:/root/colcon_ws/src/vio_recorder" \
   --volume="$(pwd)/depthai-ws:/root/depthai-ws" \
   --volume="$(pwd)/px4-ws:/root/px4-ws" \
   --volume="$(pwd):/root/OpenVincenzo:ro" \

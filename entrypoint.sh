@@ -145,9 +145,17 @@ MAKEFLAGS="-j2" colcon build --symlink-install \
 
 echo "+++ oak_stream_server Build Completed "
 
+
+echo "+++ Building vio_recorder"
+MAKEFLAGS="-j2" colcon build --symlink-install \
+    --executor sequential \
+    --packages-select vio_recorder
+
+echo "+++ vio_recorder Build Completed "
+
 # Unlike depthai-ws and px4-ws above, colcon_ws was never sourced for the
 # entrypoint's own shell (only rebuilt): without this, ov_msckf,
-# px4_vio_bridge and oak_stream_server are invisible to `ros2 run`/`launch`
+# px4_vio_bridge, oak_stream_server and vio_recorder are invisible to `ros2 run`/`launch`
 # in every shell spawned from this entrypoint (tmux panes, `docker exec`
 # inheriting this env via `exec "$@"` below) until sourced by hand.
 source /root/colcon_ws/install/setup.bash
