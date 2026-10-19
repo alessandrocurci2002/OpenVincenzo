@@ -232,6 +232,6 @@ ros2 run ov_eval plot_consistency \
 
 
 ## todo list for deployment
-[] eseguendo dockerRun non viene clonata la directory di px4. come fix, clonare la propria repo px4 e poi eseguire `dockerStart.sh <nome_containert>` (dopo aver stoppato il container)
-[] definire il comando per clonare anche i submodule (ricorsivo?)
+[ ] eseguendo dockerRun non viene clonata la directory di px4. come fix, clonare la propria repo px4 e poi eseguire `dockerStart.sh <nome_containert>` (dopo aver stoppato il container)
+[ ] definire il comando per clonare anche i submodule (ricorsivo?)
 
