@@ -228,3 +228,10 @@ ros2 run ov_eval plot_consistency \
 - Since `PX4-Autopilot` is mounted from the host, Git operations inside the container affect the host checkout. Keep file ownership consistent to avoid `root`-owned `.git` files.
 - Headless mode (`HEADLESS=1`) skips Gazebo rendering — use it on machines without a GPU.
 - Re-attach to a running container: `docker exec -it <container_name> bash`
+
+
+
+## todo list for deployment
+[] eseguendo dockerRun non viene clonata la directory di px4. come fix, clonare la propria repo px4 e poi eseguire `dockerStart.sh <nome_containert>` (dopo aver stoppato il container)
+[] definire il comando per clonare anche i submodule (ricorsivo?)
+
