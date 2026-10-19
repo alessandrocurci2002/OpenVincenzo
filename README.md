@@ -226,3 +226,8 @@ The TagSLAM container is started separately with `./dockerRun_tagslam.sh` (it bu
 
   Do not use `--recursive`: it would also fetch the ~29 nested submodules of the PX4 fork (not needed).
 - access to the private PX4 fork from the host (git credentials for `FedericoDD/PX4-Autopilot`)
+
+
+sudo -E rpi-eeprom-config --edit
+PSU_MAX_CURRENT=5000
+
